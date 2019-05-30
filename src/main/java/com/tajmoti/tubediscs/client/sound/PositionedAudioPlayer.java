@@ -34,7 +34,7 @@ public class PositionedAudioPlayer {
 
         // Actually play the sound
         float distOrRoll = 16.0F;
-        soundSystem.newSource(false, uid, url, fileName, false, pos.getX(), pos.getY(), pos.getZ(), attType, distOrRoll);
+        soundSystem.newStreamingSource(false, uid, url, fileName, false, pos.getX(), pos.getY(), pos.getZ(), attType, distOrRoll);
         soundSystem.play(uid);
 
         // Save the audio ref
