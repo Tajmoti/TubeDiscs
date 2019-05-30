@@ -79,6 +79,10 @@ public class OnlineAudioPlayer {
             task.cancel(true);
     }
 
+    public void cancelAll() {
+        audioPlayer.stopAudio();
+    }
+
     private static void mkdirs() {
         AUDIO_CACHE.mkdirs();
         VIDEO_CACHE.mkdirs();

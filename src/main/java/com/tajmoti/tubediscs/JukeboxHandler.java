@@ -9,6 +9,7 @@ import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.world.BlockEvent;
 import net.minecraftforge.fml.common.eventhandler.Event;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.network.FMLNetworkEvent;
 
 @SuppressWarnings("unused")
 public class JukeboxHandler {
@@ -37,6 +38,12 @@ public class JukeboxHandler {
         if (world.getBlockState(pos).getBlock() instanceof BlockJukebox) {
             player.cancel(pos);
         }
+        event.setResult(Event.Result.ALLOW);
+    }
+
+    @SubscribeEvent
+    public void onPlayerDisconnect(FMLNetworkEvent.ClientDisconnectionFromServerEvent event) {
+        player.cancelAll();
         event.setResult(Event.Result.ALLOW);
     }
 }

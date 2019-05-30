@@ -6,7 +6,6 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import paulscode.sound.SoundSystem;
 
-import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
@@ -43,13 +42,15 @@ public class PositionedAudioPlayer {
     }
 
     public void stopAudioAtPos(BlockPos pos) {
-        String existing = getAudioAtPos(pos);
-        if (existing != null)
+        String existing = worldAudioMap.get(pos);
+        if (existing != null) {
             soundSystem.stop(existing);
+            worldAudioMap.remove(pos);
+        }
     }
 
-    @Nullable
-    private String getAudioAtPos(BlockPos pos) {
-        return worldAudioMap.get(pos);
+    public void stopAudio() {
+        worldAudioMap.forEach((pos, s) -> soundSystem.stop(s));
+        worldAudioMap.clear();
     }
 }
