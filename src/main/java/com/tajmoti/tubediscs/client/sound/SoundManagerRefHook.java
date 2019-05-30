@@ -16,8 +16,8 @@ public class SoundManagerRefHook {
 
     public SoundManagerRefHook(SoundHandler handler) {
         this.handler = handler;
-        this.sndManagerField = ObfuscationReflectionHelper.findField(SoundHandler.class, "sndManager");
-        this.sndSystemField = ObfuscationReflectionHelper.findField(SoundManager.class, "sndSystem");
+        this.sndManagerField = ObfuscationReflectionHelper.findField(SoundHandler.class, "field_147694_f");
+        this.sndSystemField = ObfuscationReflectionHelper.findField(SoundManager.class, "field_148620_e");
         this.sndManagerField.setAccessible(true);
         this.sndSystemField.setAccessible(true);
     }
