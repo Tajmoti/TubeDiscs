@@ -1,9 +1,9 @@
 package com.tajmoti.tubediscs;
 
+import com.tajmoti.tubediscs.client.converter.OnlineAudioPlayer;
+import com.tajmoti.tubediscs.client.gui.GuiHandler;
 import com.tajmoti.tubediscs.client.sound.PositionedAudioPlayer;
 import com.tajmoti.tubediscs.client.sound.SoundManagerRefHook;
-import com.tajmoti.tubediscs.client.gui.GuiHandler;
-import com.tajmoti.tubediscs.client.converter.OnlineAudioPlayer;
 import com.tajmoti.tubediscs.item.ModItems;
 import com.tajmoti.tubediscs.net.TubePlayMessage;
 import net.minecraft.client.Minecraft;
@@ -61,21 +61,23 @@ public class TubeDiscs {
 
     @EventHandler
     public void init(FMLInitializationEvent event) {
-        // Network messages
-        network = NetworkRegistry.INSTANCE.newSimpleChannel(ModInfo.MODID);
-        network.registerMessage(TubePlayMessage.Handler.class, TubePlayMessage.class, 0, Side.CLIENT);
+        if (event.getSide() == Side.CLIENT) {
+            // Network messages
+            network = NetworkRegistry.INSTANCE.newSimpleChannel(ModInfo.MODID);
+            network.registerMessage(TubePlayMessage.Handler.class, TubePlayMessage.class, 0, Side.CLIENT);
 
-        // GUI
-        NetworkRegistry.INSTANCE.registerGuiHandler(this, new GuiHandler());
+            // GUI
+            NetworkRegistry.INSTANCE.registerGuiHandler(this, new GuiHandler());
 
-        // Sound handlers
-        SoundHandler handler = Minecraft.getMinecraft().getSoundHandler();
-        SoundSystem system = new SoundManagerRefHook(handler).getSoundSystem();
+            // Sound handlers
+            SoundHandler handler = Minecraft.getMinecraft().getSoundHandler();
+            SoundSystem system = new SoundManagerRefHook(handler).getSoundSystem();
 
-        PositionedAudioPlayer pp = new PositionedAudioPlayer(system);
-        audio = new OnlineAudioPlayer(logger, pp);
+            PositionedAudioPlayer pp = new PositionedAudioPlayer(system);
+            audio = new OnlineAudioPlayer(logger, pp);
 
-        // Block handler
-        MinecraftForge.EVENT_BUS.register(new JukeboxHandler(audio));
+            // Block handler
+            MinecraftForge.EVENT_BUS.register(new JukeboxHandler(audio));
+        }
     }
 }
