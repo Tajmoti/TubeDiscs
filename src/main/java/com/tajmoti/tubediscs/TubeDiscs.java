@@ -76,6 +76,6 @@ public class TubeDiscs {
         audio = new OnlineAudioPlayer(logger, pp);
 
         // Block handler
-        MinecraftForge.EVENT_BUS.register(new BlockHandler(audio));
+        MinecraftForge.EVENT_BUS.register(new JukeboxHandler(audio));
     }
 }
