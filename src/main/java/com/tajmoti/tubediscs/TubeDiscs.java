@@ -45,10 +45,12 @@ public class TubeDiscs {
         return logger;
     }
 
+    @SideOnly(Side.SERVER)
     public SimpleNetworkWrapper getNetwork() {
         return network;
     }
 
+    @SideOnly(Side.CLIENT)
     public OnlineAudioPlayer getAudio() {
         return audio;
     }
@@ -61,11 +63,11 @@ public class TubeDiscs {
 
     @EventHandler
     public void init(FMLInitializationEvent event) {
-        if (event.getSide() == Side.CLIENT) {
-            // Network messages
-            network = NetworkRegistry.INSTANCE.newSimpleChannel(ModInfo.MODID);
-            network.registerMessage(TubePlayMessage.Handler.class, TubePlayMessage.class, 0, Side.CLIENT);
+        // Network messages
+        network = NetworkRegistry.INSTANCE.newSimpleChannel(ModInfo.MODID);
+        network.registerMessage(TubePlayMessage.Handler.class, TubePlayMessage.class, 0, Side.CLIENT);
 
+        if (event.getSide() == Side.CLIENT) {
             // GUI
             NetworkRegistry.INSTANCE.registerGuiHandler(this, new GuiHandler());
 
