@@ -20,13 +20,11 @@ public class BlockHandler {
     @SubscribeEvent
     public void onBreakEvent(BlockEvent.BreakEvent event) {
         World w = event.getWorld();
-        if (w.isRemote) {
-            BlockPos pos = event.getPos();
-            IBlockState s = w.getBlockState(pos);
-            if (s.getBlock() instanceof BlockJukebox) {
-                player.cancel(pos);
-            }
-            event.setResult(Event.Result.ALLOW);
+        BlockPos pos = event.getPos();
+        IBlockState s = w.getBlockState(pos);
+        if (s.getBlock() instanceof BlockJukebox) {
+            player.cancel(pos);
         }
+        event.setResult(Event.Result.ALLOW);
     }
 }
