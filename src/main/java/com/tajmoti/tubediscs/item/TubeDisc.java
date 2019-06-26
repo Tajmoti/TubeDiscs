@@ -22,6 +22,7 @@ import net.minecraft.world.World;
 import net.minecraftforge.fml.common.network.simpleimpl.SimpleNetworkWrapper;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
+import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nullable;
 import java.net.MalformedURLException;
@@ -30,10 +31,12 @@ import java.util.List;
 
 public class TubeDisc extends ItemRecord {
     private static final String NBT_URL = "url";
+    private final Logger logger;
 
 
-    public TubeDisc() {
+    public TubeDisc(Logger logger) {
         super(null, null);
+        this.logger = logger;
         setUnlocalizedName("tubedisc");
         setRegistryName("tubedisc");
         setCreativeTab(CreativeTabs.MISC);
@@ -43,8 +46,7 @@ public class TubeDisc extends ItemRecord {
     @Override
     public ActionResult<ItemStack> onItemRightClick(World worldIn, EntityPlayer playerIn, EnumHand handIn) {
         ItemStack is = playerIn.getHeldItem(handIn);
-        BlockPos pos = playerIn.getPosition();
-        playerIn.openGui(TubeDiscs.getInstance(), TubeDiscGui.ID, worldIn, pos.getX(), pos.getY(), pos.getZ());
+        openUrlGUI(worldIn, playerIn);
         return ActionResult.newResult(EnumActionResult.SUCCESS, is);
     }
 
@@ -56,12 +58,20 @@ public class TubeDisc extends ItemRecord {
         if (!isReadyJukebox(bs))
             return EnumActionResult.PASS;
 
-        // If client, make sure the file exists
-        if (worldIn.isRemote)
-            return EnumActionResult.SUCCESS;
-
         // Get the video URL
         URL url = getUrl(player.getHeldItem(hand));
+
+        if (url == null) {
+            if (worldIn.isRemote) {
+                logger.info("Disc URL is null, opening GUI");
+                openUrlGUI(worldIn, player);
+            }
+            return EnumActionResult.FAIL;
+        }
+
+        // If client, do not do anything
+        if (worldIn.isRemote)
+            return EnumActionResult.SUCCESS;
 
         SimpleNetworkWrapper net = TubeDiscs.getInstance().getNetwork();
         TubePlayMessage msg = new TubePlayMessage(pos, url.toString());
@@ -78,6 +88,11 @@ public class TubeDisc extends ItemRecord {
 
     private boolean isReadyJukebox(IBlockState bs) {
         return bs.getBlock() == Blocks.JUKEBOX && !bs.getValue(BlockJukebox.HAS_RECORD);
+    }
+
+    private void openUrlGUI(World worldIn, EntityPlayer playerIn) {
+        BlockPos pos = playerIn.getPosition();
+        playerIn.openGui(TubeDiscs.getInstance(), TubeDiscGui.ID, worldIn, pos.getX(), pos.getY(), pos.getZ());
     }
 
     public static void setUrl(ItemStack is, URL url) {

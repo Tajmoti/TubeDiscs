@@ -1,6 +1,7 @@
 package com.tajmoti.tubediscs.item;
 
 import com.tajmoti.tubediscs.ModInfo;
+import com.tajmoti.tubediscs.TubeDiscs;
 import net.minecraft.item.Item;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -12,7 +13,7 @@ public class ModItems {
 
 
     public static void init() {
-        TUBEDISC = new TubeDisc();
+        TUBEDISC = new TubeDisc(TubeDiscs.getInstance().getLogger());
     }
 
     @SubscribeEvent
