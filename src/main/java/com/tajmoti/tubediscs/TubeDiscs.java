@@ -45,7 +45,6 @@ public class TubeDiscs {
         return logger;
     }
 
-    @SideOnly(Side.SERVER)
     public SimpleNetworkWrapper getNetwork() {
         return network;
     }
