@@ -21,6 +21,7 @@ public class TubePlayMessage implements IMessage {
     /**
      * Required empty constructor!
      */
+    @SuppressWarnings("unused")
     public TubePlayMessage() {
     }
 
@@ -67,6 +68,7 @@ public class TubePlayMessage implements IMessage {
             TubeDiscs mod = TubeDiscs.getInstance();
             try {
                 URL url = new URL(urls);
+                mod.getLogger().info("Requested playback of " + url + " at " + pos.toString());
                 mod.getAudio().playVideoAtPos(url, pos);
             } catch (MalformedURLException e) {
                 mod.getLogger().error(e);

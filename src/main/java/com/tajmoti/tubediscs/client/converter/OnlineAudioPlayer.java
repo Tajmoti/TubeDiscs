@@ -54,13 +54,21 @@ public class OnlineAudioPlayer {
                 String id = downloader.extractVideoId(url);
                 File audio = new File(AUDIO_CACHE, id + ".ogg");
                 if (!audio.exists()) {
+                    logger.info(url + " does not exist, downloading…");
                     File video = downloader.downloadVideo(url, VIDEO_CACHE);
+                    logger.info(url + " downloaded, converting…");
                     AudioUtil.convertToOgg(video, audio);
-                    video.delete();
+                    logger.info(url + " converted, deleting video file…");
+                    if (!video.delete())
+                        logger.warn("Failed to delete " + video.toString());
                 }
                 // Play it
-                if (!Thread.interrupted())
+                if (!Thread.interrupted()) {
+                    logger.info("Playing " + audio.toString());
                     audioPlayer.playAudioAtPos(pos, audio);
+                } else {
+                    logger.info("Playback of " + audio.toString() + " canceled!");
+                }
             } catch (EncoderException | IOException e) {
                 logger.error(e);
             }
