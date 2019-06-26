@@ -26,7 +26,7 @@ public class GuiHandler implements IGuiHandler {
                 // This should not happen, just to be sure
                 if (disc == null) return null;
                 // Open the actual GUI
-                return new TubeDiscGui(disc);
+                return new TubeDiscGui();
             default:
                 return null;
         }

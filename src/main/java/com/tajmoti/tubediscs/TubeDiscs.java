@@ -6,6 +6,7 @@ import com.tajmoti.tubediscs.client.sound.PositionedAudioPlayer;
 import com.tajmoti.tubediscs.client.sound.SoundManagerRefHook;
 import com.tajmoti.tubediscs.item.ModItems;
 import com.tajmoti.tubediscs.net.TubePlayMessage;
+import com.tajmoti.tubediscs.net.TubeSaveMessage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.SoundHandler;
 import net.minecraftforge.common.MinecraftForge;
@@ -65,6 +66,7 @@ public class TubeDiscs {
         // Network messages
         network = NetworkRegistry.INSTANCE.newSimpleChannel(ModInfo.MODID);
         network.registerMessage(TubePlayMessage.Handler.class, TubePlayMessage.class, 0, Side.CLIENT);
+        network.registerMessage(TubeSaveMessage.Handler.class, TubeSaveMessage.class, 1, Side.SERVER);
 
         if (event.getSide() == Side.CLIENT) {
             // GUI

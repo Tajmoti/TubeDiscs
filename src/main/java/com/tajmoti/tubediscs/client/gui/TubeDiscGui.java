@@ -1,11 +1,12 @@
 package com.tajmoti.tubediscs.client.gui;
 
-import com.tajmoti.tubediscs.item.TubeDisc;
+import com.tajmoti.tubediscs.TubeDiscs;
+import com.tajmoti.tubediscs.net.TubeSaveMessage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
-import net.minecraft.item.ItemStack;
+import net.minecraftforge.fml.common.network.simpleimpl.SimpleNetworkWrapper;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
@@ -16,16 +17,7 @@ import java.net.URL;
 @SideOnly(Side.CLIENT)
 public class TubeDiscGui extends GuiScreen {
     public static final int ID = 0;
-    private ItemStack disc;
     private GuiTextField textField;
-
-
-    /**
-     * ItemStack MUST BE of TubeDisc!
-     */
-    public TubeDiscGui(ItemStack disc) {
-        this.disc = disc;
-    }
 
     @Override
     public void initGui() {
@@ -43,8 +35,12 @@ public class TubeDiscGui extends GuiScreen {
             case 0:
                 try {
                     URL url = new URL(textField.getText());
-                    TubeDisc.setUrl(disc, url);
+                    // Close the screen
                     Minecraft.getMinecraft().player.closeScreen();
+                    // Send the update item message to the server
+                    SimpleNetworkWrapper net = TubeDiscs.getInstance().getNetwork();
+                    TubeSaveMessage msg = new TubeSaveMessage(url);
+                    net.sendToServer(msg);
                 } catch (MalformedURLException e) {
                     // TODO
                 }
