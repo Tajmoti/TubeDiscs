@@ -2,19 +2,17 @@ package com.tajmoti.tubediscs.net;
 
 import com.tajmoti.tubediscs.TubeDiscs;
 import io.netty.buffer.ByteBuf;
-import net.minecraft.client.Minecraft;
 import net.minecraft.util.math.BlockPos;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
 import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
 
 import java.net.MalformedURLException;
 import java.net.URL;
 
 public class TubePlayMessage implements IMessage {
     private BlockPos pos;
+    private int offset;
     private String url;
 
 
@@ -28,8 +26,9 @@ public class TubePlayMessage implements IMessage {
     /**
      * Actual initializing constructor.
      */
-    public TubePlayMessage(BlockPos pos, String url) {
+    public TubePlayMessage(BlockPos pos, String url, int offset) {
         this.pos = pos;
+        this.offset = offset;
         this.url = url;
     }
 
@@ -40,6 +39,7 @@ public class TubePlayMessage implements IMessage {
         y = buf.readDouble();
         z = buf.readDouble();
         pos = new BlockPos(x, y, z);
+        offset = buf.readInt();
         byte[] bytes = new byte[buf.readableBytes()];
         buf.readBytes(bytes);
         url = new String(bytes);
@@ -50,6 +50,7 @@ public class TubePlayMessage implements IMessage {
         buf.writeDouble(pos.getX());
         buf.writeDouble(pos.getY());
         buf.writeDouble(pos.getZ());
+        buf.writeInt(offset);
         buf.writeBytes(url.getBytes());
     }
 
@@ -57,22 +58,19 @@ public class TubePlayMessage implements IMessage {
     public static class Handler implements IMessageHandler<TubePlayMessage, IMessage> {
         @Override
         public IMessage onMessage(TubePlayMessage message, MessageContext ctx) {
-            if (ctx.side == Side.CLIENT) {
-                Minecraft.getMinecraft().addScheduledTask(() -> playOnClient(message.url, message.pos));
-            }
-            return null;
-        }
-
-        @SideOnly(Side.CLIENT)
-        private void playOnClient(String urls, BlockPos pos) {
             TubeDiscs mod = TubeDiscs.getInstance();
             try {
-                URL url = new URL(urls);
-                mod.getLogger().info("Requested playback of " + url + " at " + pos.toString());
+                URL url = new URL(message.url);
+                BlockPos pos = message.pos;
+                int offset = message.offset;
+
+                mod.getLogger().info("Requested playback of " + url + " at " + pos.toString() + " with offset " + offset);
                 mod.getAudio().playVideoAtPos(url, pos);
+                mod.getSeekTracker().setOffset(url, offset);
             } catch (MalformedURLException e) {
                 mod.getLogger().error(e);
             }
+            return null;
         }
     }
 }

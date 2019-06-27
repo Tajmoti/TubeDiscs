@@ -26,7 +26,7 @@ public class YoutubeDlVideoDownloader implements IVideoDownloader {
             throw new IOException(e);
         }
 
-        File original = new File(targetDir, extractVideoId(videoUrl));
+        File original = new File(targetDir, IVideoDownloader.extractVideoId(videoUrl));
         File renamed = new File(targetDir, original.getName() + ".webm");
 
         original.renameTo(renamed);

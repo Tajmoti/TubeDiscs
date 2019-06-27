@@ -14,12 +14,14 @@ import java.util.Map;
 
 public class PositionedAudioPlayer {
     private final SoundSystem soundSystem;
-    private final Map<BlockPos, String> worldAudioMap;
+    private final Map<BlockPos, PlayInfo> worldAudioMap;
+    private final Map<String, Integer> fileNameRefs;
 
 
     public PositionedAudioPlayer(SoundSystem ss) {
         this.soundSystem = ss;
         this.worldAudioMap = new HashMap<>();
+        this.fileNameRefs = new HashMap<>();
     }
 
     public void playAudioAtPos(BlockPos pos, File file) throws IOException {
@@ -38,19 +40,49 @@ public class PositionedAudioPlayer {
         soundSystem.play(uid);
 
         // Save the audio ref
-        worldAudioMap.put(pos, uid);
+        worldAudioMap.put(pos, new PlayInfo(uid, fileName));
+
+        // Ref counter
+        Integer refCount = fileNameRefs.get(fileName);
+        if (refCount == null) refCount = 0;
+        fileNameRefs.put(fileName, ++refCount);
     }
 
     public void stopAudioAtPos(BlockPos pos) {
-        String existing = worldAudioMap.get(pos);
-        if (existing != null) {
-            soundSystem.stop(existing);
+        PlayInfo info = worldAudioMap.get(pos);
+        if (info != null) {
+            soundSystem.stop(info.uid);
+            soundSystem.removeSource(info.uid);
             worldAudioMap.remove(pos);
+
+            // Ref counter, guaranteed to be here
+            int refs = fileNameRefs.get(info.fileName) - 1;
+            if (refs == 0) soundSystem.unloadSound(info.fileName);
+            fileNameRefs.put(info.fileName, refs);
         }
     }
 
     public void stopAudio() {
-        worldAudioMap.forEach((pos, s) -> soundSystem.stop(s));
+        worldAudioMap.forEach((pos, s) -> {
+            soundSystem.stop(s.uid);
+            soundSystem.removeSource(s.uid);
+        });
         worldAudioMap.clear();
+        // Ref counter
+        fileNameRefs.forEach((fileName, refs) -> {
+            if (refs > 0) soundSystem.unloadSound(fileName);
+        });
+        fileNameRefs.clear();
+    }
+
+
+    private static class PlayInfo {
+        private final String uid;
+        private final String fileName;
+
+        public PlayInfo(String uid, String fileName) {
+            this.uid = uid;
+            this.fileName = fileName;
+        }
     }
 }

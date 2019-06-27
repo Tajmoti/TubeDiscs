@@ -51,7 +51,7 @@ public class OnlineAudioPlayer {
         mkdirs();
         Future f = executor.submit(() -> {
             try {
-                String id = downloader.extractVideoId(url);
+                String id = IVideoDownloader.extractVideoId(url);
                 File audio = new File(AUDIO_CACHE, id + ".ogg");
                 if (!audio.exists()) {
                     logger.info(url + " does not exist, downloading…");

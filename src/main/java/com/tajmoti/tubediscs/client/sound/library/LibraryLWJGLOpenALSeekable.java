@@ -1,7 +1,6 @@
 package com.tajmoti.tubediscs.client.sound.library;
 
 import com.tajmoti.tubediscs.TubeDiscs;
-import com.tajmoti.tubediscs.client.sound.codec.CodecJOrbisSeekable;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.openal.AL10;
@@ -9,7 +8,6 @@ import paulscode.sound.*;
 import paulscode.sound.libraries.LibraryLWJGLOpenAL;
 
 import javax.sound.sampled.AudioFormat;
-import java.lang.reflect.Field;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
@@ -60,9 +58,6 @@ public class LibraryLWJGLOpenALSeekable extends LibraryLWJGLOpenAL {
             return true;
 
         ICodec codec = SoundSystemConfig.getCodec(filenameURL.getFilename());
-        if (codec instanceof CodecJOrbisSeekable) {
-            ((CodecJOrbisSeekable) codec).setOffset(seekInfo.getAmountToSeek(filenameURL));
-        }
 
         if (errorCheck(codec == null, "No codec found for file '" +
                 filenameURL.getFilename() +
@@ -111,6 +106,7 @@ public class LibraryLWJGLOpenALSeekable extends LibraryLWJGLOpenAL {
                     "'loadSound'");
             return false;
         }
+        buffer.audioData = trimToSeek(filenameURL, buffer);
 
         IntBuffer intBuffer = BufferUtils.createIntBuffer(1);
         AL10.alGenBuffers(intBuffer);
@@ -143,10 +139,38 @@ public class LibraryLWJGLOpenALSeekable extends LibraryLWJGLOpenAL {
         return true;
     }
 
+    private byte[] trimToSeek(FilenameURL filenameURL, SoundBuffer buffer) {
+        AudioFormat audioFormat = buffer.audioFormat;
+        byte[] audioData = buffer.audioData;
+
+        // Trim the data
+        long totalOffsetMillis = seekInfo.getSeekMillis(filenameURL);
+        if (totalOffsetMillis <= 0) return audioData;
+
+        int frameSize = audioFormat.getFrameSize();
+        float totalOffsetBytes = ((int) totalOffsetMillis * audioFormat.getFrameRate() / 1000) * frameSize;
+        // Offset must be multiple of a frame!
+        int offset = (int) totalOffsetBytes / frameSize * frameSize;
+
+        // Final length
+        int dataLen = audioData.length;
+        int retLen = dataLen - offset;
+        // If the offset is larger than the data,
+        // the audio is already over. Do not play anything.
+        if (retLen < 0) {
+            logger.info("Offset [" + offset + "] larger than data [" + dataLen + "]!");
+            return new byte[0];
+        }
+
+        byte[] newData = new byte[retLen];
+        System.arraycopy(audioData, offset, newData, 0, retLen);
+        return newData;
+    }
+
     public interface SeekAmountGetter {
         /**
          * Return >= 0 if we want to skip the bytes, -1 if not.
          */
-        int getAmountToSeek(FilenameURL filenameURL);
+        int getSeekMillis(FilenameURL filenameURL);
     }
 }

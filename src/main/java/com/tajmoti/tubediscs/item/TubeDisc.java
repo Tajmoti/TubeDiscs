@@ -74,7 +74,8 @@ public class TubeDisc extends ItemRecord {
             return EnumActionResult.SUCCESS;
 
         SimpleNetworkWrapper net = TubeDiscs.getInstance().getNetwork();
-        TubePlayMessage msg = new TubePlayMessage(pos, url.toString());
+        // TODO track song offset
+        TubePlayMessage msg = new TubePlayMessage(pos, url.toString(), 0);
         net.sendToAll(msg);
 
         // Insert the record item into the jukebox
