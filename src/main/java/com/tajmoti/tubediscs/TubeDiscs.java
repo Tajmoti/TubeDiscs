@@ -2,14 +2,16 @@ package com.tajmoti.tubediscs;
 
 import com.tajmoti.tubediscs.client.converter.OnlineAudioPlayer;
 import com.tajmoti.tubediscs.client.gui.GuiHandler;
+import com.tajmoti.tubediscs.client.sound.OffsetTracker;
 import com.tajmoti.tubediscs.client.sound.PositionedAudioPlayer;
 import com.tajmoti.tubediscs.client.sound.SoundManagerRefHook;
 import com.tajmoti.tubediscs.event.ClientJukeboxHandler;
+import com.tajmoti.tubediscs.event.ClientSoundLibReplacer;
 import com.tajmoti.tubediscs.event.ServerJukeboxHandler;
 import com.tajmoti.tubediscs.item.ModItems;
-import com.tajmoti.tubediscs.net.TubeStopMessage;
 import com.tajmoti.tubediscs.net.TubePlayMessage;
 import com.tajmoti.tubediscs.net.TubeSaveMessage;
+import com.tajmoti.tubediscs.net.TubeStopMessage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.SoundHandler;
 import net.minecraftforge.common.MinecraftForge;
@@ -40,6 +42,9 @@ public class TubeDiscs {
     @SideOnly(Side.CLIENT)
     private OnlineAudioPlayer audio;
 
+    @SideOnly(Side.CLIENT)
+    private OffsetTracker seekTracker;
+
 
     public static TubeDiscs getInstance() {
         return INSTANCE;
@@ -58,10 +63,21 @@ public class TubeDiscs {
         return audio;
     }
 
+    @SideOnly(Side.CLIENT)
+    public OffsetTracker getSeekTracker() {
+        return seekTracker;
+    }
+
     @EventHandler
     public void preInit(FMLPreInitializationEvent event) {
         logger = event.getModLog();
         ModItems.init();
+
+        // Register custom codec and audio handler
+        if (event.getSide() == Side.CLIENT) {
+            seekTracker = new OffsetTracker();
+            MinecraftForge.EVENT_BUS.register(new ClientSoundLibReplacer(logger));
+        }
     }
 
     @EventHandler
