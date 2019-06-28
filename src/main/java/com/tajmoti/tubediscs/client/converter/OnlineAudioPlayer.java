@@ -45,7 +45,8 @@ public class OnlineAudioPlayer {
         this.downloader = new YoutubeDlVideoDownloader();
     }
 
-    public void playVideoAtPos(URL url, BlockPos pos) {
+    public void playVideoAtPos(URL url, BlockPos pos, int offsetMillis) {
+        long timeReceived = System.currentTimeMillis();
         audioPlayer.stopAudioAtPos(pos);
 
         mkdirs();
@@ -65,7 +66,8 @@ public class OnlineAudioPlayer {
                 // Play it
                 if (!Thread.interrupted()) {
                     logger.info("Playing " + audio.toString());
-                    audioPlayer.playAudioAtPos(pos, audio);
+                    int finalOffsetMillis = (int) (System.currentTimeMillis() - timeReceived) + offsetMillis;
+                    audioPlayer.playAudioAtPos(pos, audio, finalOffsetMillis);
                 } else {
                     logger.info("Playback of " + audio.toString() + " canceled!");
                 }

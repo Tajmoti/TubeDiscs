@@ -65,8 +65,7 @@ public class TubePlayMessage implements IMessage {
                 int offset = message.offset;
 
                 mod.getLogger().info("Requested playback of " + url + " at " + pos.toString() + " with offset " + offset);
-                mod.getAudio().playVideoAtPos(url, pos);
-                mod.getSeekTracker().setOffset(url, offset);
+                mod.getAudio().playVideoAtPos(url, pos, offset);
             } catch (MalformedURLException e) {
                 mod.getLogger().error(e);
             }

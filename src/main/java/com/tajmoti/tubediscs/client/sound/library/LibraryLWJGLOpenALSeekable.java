@@ -6,6 +6,7 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.openal.AL10;
 import paulscode.sound.*;
 import paulscode.sound.libraries.LibraryLWJGLOpenAL;
+import paulscode.sound.libraries.SourceLWJGLOpenAL;
 
 import javax.sound.sampled.AudioFormat;
 import java.net.URL;
@@ -31,8 +32,11 @@ public class LibraryLWJGLOpenALSeekable extends LibraryLWJGLOpenAL {
         }
     }
 
-    @Override
-    public boolean loadSound(FilenameURL filenameURL) {
+    /**
+     * Replacement for loadSound(FilenameURL), this one also has the sourcename
+     * parameter so we can find the delay by it.
+     */
+    private boolean loadSoundWithIdentifier(FilenameURL filenameURL, String sourcename) {
         HashMap<String, IntBuffer> ALBufferMap = accessor.getBufferMap();
 
         // Make sure the buffer map exists:
@@ -106,7 +110,8 @@ public class LibraryLWJGLOpenALSeekable extends LibraryLWJGLOpenAL {
                     "'loadSound'");
             return false;
         }
-        buffer.audioData = trimToSeek(filenameURL, buffer);
+        int totalOffsetMillis = seekInfo.getSeekMillis(sourcename);
+        buffer.audioData = trimToSeek(buffer, totalOffsetMillis);
 
         IntBuffer intBuffer = BufferUtils.createIntBuffer(1);
         AL10.alGenBuffers(intBuffer);
@@ -139,16 +144,76 @@ public class LibraryLWJGLOpenALSeekable extends LibraryLWJGLOpenAL {
         return true;
     }
 
-    private byte[] trimToSeek(FilenameURL filenameURL, SoundBuffer buffer) {
+    @Override
+    public void newSource(boolean priority, boolean toStream, boolean toLoop, String sourcename, FilenameURL filenameURL, float x, float y, float z, int attModel, float distOrRoll) {
+        HashMap<String, IntBuffer> ALBufferMap = accessor.getBufferMap();
+        IntBuffer myBuffer = null;
+        if (!toStream) {
+            // Grab the sound buffer for this file:
+            myBuffer = ALBufferMap.get(filenameURL.getFilename());
+
+            // if not found, try loading it:
+            if (myBuffer == null) {
+                if (!loadSoundWithIdentifier(filenameURL, sourcename)) {
+                    errorMessage("Source '" + sourcename + "' was not created "
+                            + "because an error occurred while loading "
+                            + filenameURL.getFilename());
+                    return;
+                }
+            }
+
+            // try and grab the sound buffer again:
+            myBuffer = ALBufferMap.get(filenameURL.getFilename());
+            // see if it was there this time:
+            if (myBuffer == null) {
+                errorMessage("Source '" + sourcename + "' was not created "
+                        + "because a sound buffer was not found for "
+                        + filenameURL.getFilename());
+                return;
+            }
+        }
+        SoundBuffer buffer = null;
+
+        if (!toStream) {
+            // Grab the audio data for this file:
+            buffer = bufferMap.get(filenameURL.getFilename());
+            // if not found, try loading it:
+            if (buffer == null) {
+                if (!loadSoundWithIdentifier(filenameURL, sourcename)) {
+                    errorMessage("Source '" + sourcename + "' was not created "
+                            + "because an error occurred while loading "
+                            + filenameURL.getFilename());
+                    return;
+                }
+            }
+            // try and grab the sound buffer again:
+            buffer = bufferMap.get(filenameURL.getFilename());
+            // see if it was there this time:
+            if (buffer == null) {
+                errorMessage("Source '" + sourcename + "' was not created "
+                        + "because audio data was not found for "
+                        + filenameURL.getFilename());
+                return;
+            }
+        }
+
+        sourceMap.put(sourcename,
+                new SourceLWJGLOpenAL(accessor.getListenerPosition(), myBuffer,
+                        priority, toStream, toLoop,
+                        sourcename, filenameURL, buffer, x,
+                        y, z, attModel, distOrRoll,
+                        false));
+    }
+
+    private byte[] trimToSeek(SoundBuffer buffer, int totalOffsetMillis) {
         AudioFormat audioFormat = buffer.audioFormat;
         byte[] audioData = buffer.audioData;
 
         // Trim the data
-        long totalOffsetMillis = seekInfo.getSeekMillis(filenameURL);
         if (totalOffsetMillis <= 0) return audioData;
 
         int frameSize = audioFormat.getFrameSize();
-        float totalOffsetBytes = ((int) totalOffsetMillis * audioFormat.getFrameRate() / 1000) * frameSize;
+        float totalOffsetBytes = (totalOffsetMillis * audioFormat.getFrameRate() / 1000) * frameSize;
         // Offset must be multiple of a frame!
         int offset = (int) totalOffsetBytes / frameSize * frameSize;
 
@@ -170,7 +235,8 @@ public class LibraryLWJGLOpenALSeekable extends LibraryLWJGLOpenAL {
     public interface SeekAmountGetter {
         /**
          * Return >= 0 if we want to skip the bytes, -1 if not.
+         * Find it by the track UID assigned in PositionedAudiPlayer.
          */
-        int getSeekMillis(FilenameURL filenameURL);
+        int getSeekMillis(String sourcename);
     }
 }

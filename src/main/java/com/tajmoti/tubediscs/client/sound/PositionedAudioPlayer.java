@@ -1,9 +1,8 @@
 package com.tajmoti.tubediscs.client.sound;
 
-import io.netty.util.internal.ThreadLocalRandom;
 import net.minecraft.client.audio.ISound;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
+import org.apache.logging.log4j.Logger;
 import paulscode.sound.SoundSystem;
 
 import java.io.File;
@@ -13,76 +12,70 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class PositionedAudioPlayer {
+    private final Logger logger;
     private final SoundSystem soundSystem;
-    private final Map<BlockPos, PlayInfo> worldAudioMap;
-    private final Map<String, Integer> fileNameRefs;
+    private int nexSourceId = 0;
+    /**
+     * The offset for each "sourcename" is remembered here.
+     * LibraryLWJGLOpenALSeekable uses it to play the sound from a certain position.
+     */
+    private final OffsetTracker offsetTracker;
+    /**
+     * What sound is played where. Added on playback start,
+     * removed when the playback is canceled.
+     * The value is the "sourcename" variable (as in MC code).
+     */
+    private final Map<BlockPos, String> worldAudioMap;
 
 
-    public PositionedAudioPlayer(SoundSystem ss) {
+    public PositionedAudioPlayer(Logger logger, SoundSystem ss, OffsetTracker offsetTracker) {
+        this.logger = logger;
+        this.offsetTracker = offsetTracker;
         this.soundSystem = ss;
         this.worldAudioMap = new HashMap<>();
-        this.fileNameRefs = new HashMap<>();
     }
 
-    public void playAudioAtPos(BlockPos pos, File file) throws IOException {
+    public void playAudioAtPos(BlockPos pos, File file, int offsetMillis) throws IOException {
         // Stop the old audio play at the position
         stopAudioAtPos(pos);
 
         // Sound parameters
         URL url = file.toURI().toURL();
-        String uid = MathHelper.getRandomUUID(ThreadLocalRandom.current()).toString();
         String fileName = file.getName();
+        String sourcename = fileName + nexSourceId++;
         int attType = ISound.AttenuationType.LINEAR.getTypeInt();
 
-        // Actually play the sound
         float distOrRoll = 16.0F;
-        soundSystem.newSource(false, uid, url, fileName, false, pos.getX(), pos.getY(), pos.getZ(), attType, distOrRoll);
-        soundSystem.play(uid);
+        // The "String identifier" parameter is actually the file name.
+        // "String sourcename" parameter is our UID, to which we pass "$filename-$nextId" where nextId is an incrementing number.
+        soundSystem.newSource(false, sourcename, url, fileName, false, pos.getX(), pos.getY(), pos.getZ(), attType, distOrRoll);
+        // Register the offset in the offsetTracker for this UID,
+        // LibraryLWJGLOpenALSeekable will find it there under the UID.
+        offsetTracker.setOffset(sourcename, offsetMillis);
+        logger.info("Submitting SoundSystem request to play [" + fileName + ";" + sourcename + ";" + offsetMillis);
+        soundSystem.play(sourcename);
+        // Remove the sound from the cache immediately because we can not re-use it, it is cut up.
+        // We will load, modify it and uncache it each time we want to play it.
+        soundSystem.unloadSound(fileName);
 
         // Save the audio ref
-        worldAudioMap.put(pos, new PlayInfo(uid, fileName));
-
-        // Ref counter
-        Integer refCount = fileNameRefs.get(fileName);
-        if (refCount == null) refCount = 0;
-        fileNameRefs.put(fileName, ++refCount);
+        worldAudioMap.put(pos, sourcename);
     }
 
     public void stopAudioAtPos(BlockPos pos) {
-        PlayInfo info = worldAudioMap.get(pos);
-        if (info != null) {
-            soundSystem.stop(info.uid);
-            soundSystem.removeSource(info.uid);
+        String sourcename = worldAudioMap.get(pos);
+        if (sourcename != null) {
+            soundSystem.stop(sourcename);
+            soundSystem.removeSource(sourcename);
             worldAudioMap.remove(pos);
-
-            // Ref counter, guaranteed to be here
-            int refs = fileNameRefs.get(info.fileName) - 1;
-            if (refs == 0) soundSystem.unloadSound(info.fileName);
-            fileNameRefs.put(info.fileName, refs);
         }
     }
 
     public void stopAudio() {
         worldAudioMap.forEach((pos, s) -> {
-            soundSystem.stop(s.uid);
-            soundSystem.removeSource(s.uid);
+            soundSystem.stop(s);
+            soundSystem.removeSource(s);
         });
         worldAudioMap.clear();
-        // Ref counter
-        fileNameRefs.forEach((fileName, refs) -> {
-            if (refs > 0) soundSystem.unloadSound(fileName);
-        });
-        fileNameRefs.clear();
-    }
-
-
-    private static class PlayInfo {
-        private final String uid;
-        private final String fileName;
-
-        public PlayInfo(String uid, String fileName) {
-            this.uid = uid;
-            this.fileName = fileName;
-        }
     }
 }

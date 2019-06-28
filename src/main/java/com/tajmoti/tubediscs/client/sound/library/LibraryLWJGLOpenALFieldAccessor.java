@@ -4,12 +4,14 @@ import org.apache.logging.log4j.Logger;
 import paulscode.sound.libraries.LibraryLWJGLOpenAL;
 
 import java.lang.reflect.Field;
+import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.HashMap;
 
 public class LibraryLWJGLOpenALFieldAccessor {
     private final Logger logger;
     private final Field fieldBufferMap;
+    private final Field fieldListenerPosition;
     private final LibraryLWJGLOpenAL target;
 
 
@@ -19,6 +21,13 @@ public class LibraryLWJGLOpenALFieldAccessor {
         try {
             this.fieldBufferMap = LibraryLWJGLOpenAL.class.getDeclaredField("ALBufferMap");
             this.fieldBufferMap.setAccessible(true);
+        } catch (NoSuchFieldException e) {
+            this.logger.error(e);
+            throw e;
+        }
+        try {
+            this.fieldListenerPosition = LibraryLWJGLOpenAL.class.getDeclaredField("listenerPositionAL");
+            this.fieldListenerPosition.setAccessible(true);
         } catch (NoSuchFieldException e) {
             this.logger.error(e);
             throw e;
@@ -39,6 +48,15 @@ public class LibraryLWJGLOpenALFieldAccessor {
             fieldBufferMap.set(target, map);
         } catch (IllegalAccessException e) {
             logger.error(e);
+        }
+    }
+
+    public FloatBuffer getListenerPosition() {
+        try {
+            return (FloatBuffer) fieldListenerPosition.get(target);
+        } catch (IllegalAccessException e) {
+            logger.error(e);
+            return null;
         }
     }
 }

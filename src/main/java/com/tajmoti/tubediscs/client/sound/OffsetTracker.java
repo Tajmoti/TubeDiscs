@@ -1,14 +1,14 @@
 package com.tajmoti.tubediscs.client.sound;
 
-import com.tajmoti.tubediscs.client.converter.IVideoDownloader;
 import com.tajmoti.tubediscs.client.sound.library.LibraryLWJGLOpenALSeekable;
-import paulscode.sound.FilenameURL;
 
-import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
 public class OffsetTracker implements LibraryLWJGLOpenALSeekable.SeekAmountGetter {
+    /**
+     * Offset for each "sourcename" (as in MC code).
+     */
     private final Map<String, OffsetInfo> offsets;
 
 
@@ -17,20 +17,19 @@ public class OffsetTracker implements LibraryLWJGLOpenALSeekable.SeekAmountGette
     }
 
     @Override
-    public int getSeekMillis(FilenameURL filenameURL) {
-        String fileName = filenameURL.getFilename();
-        String videoId = fileName.substring(0, fileName.indexOf('.'));
-        OffsetInfo info = offsets.get(videoId);
+    public synchronized int getSeekMillis(String sourcename) {
+        OffsetInfo info = offsets.get(sourcename);
         if (info == null) {
             return -1;
         } else {
-            return info.getOffsetNow();
+            int offsetNow = info.getOffsetNow();
+            offsets.remove(sourcename);
+            return offsetNow;
         }
     }
 
-    public void setOffset(URL url, int offset) {
-        String videoId = IVideoDownloader.extractVideoId(url);
-        offsets.put(videoId, new OffsetInfo(offset));
+    public synchronized void setOffset(String sourcename, int offset) {
+        offsets.put(sourcename, new OffsetInfo(offset));
     }
 
     private static class OffsetInfo {
