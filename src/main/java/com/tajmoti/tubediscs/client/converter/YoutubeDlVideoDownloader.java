@@ -77,10 +77,11 @@ public class YoutubeDlVideoDownloader implements IVideoDownloader {
         } else {
             try (InputStream in = EXECUTABLE_URL.openStream()) {
                 Files.copy(in, exec.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                YoutubeDL.setExecutablePath(exec.getAbsolutePath());
             } catch (IOException e) {
                 logger.error(e);
             }
         }
+        if (exec.exists())
+            YoutubeDL.setExecutablePath(exec.getAbsolutePath());
     }
 }
