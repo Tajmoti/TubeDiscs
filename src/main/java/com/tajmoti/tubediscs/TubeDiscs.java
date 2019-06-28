@@ -1,6 +1,8 @@
 package com.tajmoti.tubediscs;
 
+import com.tajmoti.tubediscs.client.converter.IVideoDownloader;
 import com.tajmoti.tubediscs.client.converter.OnlineAudioPlayer;
+import com.tajmoti.tubediscs.client.converter.YoutubeDlVideoDownloader;
 import com.tajmoti.tubediscs.client.gui.GuiHandler;
 import com.tajmoti.tubediscs.client.sound.OffsetTracker;
 import com.tajmoti.tubediscs.client.sound.PositionedAudioPlayer;
@@ -25,6 +27,8 @@ import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import org.apache.logging.log4j.Logger;
 import paulscode.sound.SoundSystem;
+
+import java.io.File;
 
 @Mod(modid = ModInfo.MODID, name = ModInfo.NAME, version = ModInfo.VERSION)
 public class TubeDiscs {
@@ -97,7 +101,11 @@ public class TubeDiscs {
             SoundSystem system = new SoundManagerRefHook(handler).getSoundSystem();
 
             PositionedAudioPlayer pp = new PositionedAudioPlayer(logger, system, seekTracker);
-            audio = new OnlineAudioPlayer(logger, pp);
+
+            OnlineAudioPlayer.mkdirs();
+            IVideoDownloader downloader = new YoutubeDlVideoDownloader(logger);
+            downloader.prepareEnvironment(new File("tubediscs"));
+            audio = new OnlineAudioPlayer(logger, downloader, pp);
 
             // Stops music on disconnect
             MinecraftForge.EVENT_BUS.register(new ClientJukeboxHandler(audio));

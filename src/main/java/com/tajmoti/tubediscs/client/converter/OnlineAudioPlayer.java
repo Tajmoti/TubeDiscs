@@ -40,13 +40,13 @@ public class OnlineAudioPlayer {
     private final Map<BlockPos, Future> processorMap;
 
 
-    public OnlineAudioPlayer(Logger logger, PositionedAudioPlayer audioPlayer) {
+    public OnlineAudioPlayer(Logger logger, IVideoDownloader downloader, PositionedAudioPlayer audioPlayer) {
         this.logger = logger;
         this.audioPlayer = audioPlayer;
         this.executor = Executors.newFixedThreadPool(4);
         this.processorMap = new HashMap<>();
         YoutubeDL.setExecutablePath("C:\\bin\\youtube-dl.exe");
-        this.downloader = new YoutubeDlVideoDownloader();
+        this.downloader = downloader;
     }
 
     public void playVideoAtPos(URL url, BlockPos pos, int offsetMillis) {
@@ -106,7 +106,7 @@ public class OnlineAudioPlayer {
         audioPlayer.stopAudio();
     }
 
-    private static void mkdirs() {
+    public static void mkdirs() {
         AUDIO_CACHE.mkdirs();
         VIDEO_CACHE.mkdirs();
     }

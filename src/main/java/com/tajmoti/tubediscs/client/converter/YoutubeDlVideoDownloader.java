@@ -6,13 +6,37 @@ import com.sapher.youtubedl.YoutubeDLRequest;
 import com.sapher.youtubedl.YoutubeDLResponse;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
+import org.apache.logging.log4j.Logger;
+import org.codehaus.plexus.util.Os;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 
 @SideOnly(Side.CLIENT)
 public class YoutubeDlVideoDownloader implements IVideoDownloader {
+    private static final URL EXECUTABLE_URL = url();
+
+    private static URL url() {
+        try {
+            return new URL("https://youtube-dl.org/downloads/latest/youtube-dl.exe");
+        } catch (MalformedURLException e) {
+            // Not gonna happen
+            return null;
+        }
+    }
+
+    private final Logger logger;
+
+
+    public YoutubeDlVideoDownloader(Logger logger) {
+        this.logger = logger;
+    }
+
     @Override
     public File downloadVideo(URL videoUrl, File targetDir) throws IOException {
         File original = new File(targetDir, IVideoDownloader.extractVideoId(videoUrl));
@@ -37,5 +61,26 @@ public class YoutubeDlVideoDownloader implements IVideoDownloader {
 
         original.renameTo(renamed);
         return renamed;
+    }
+
+    @Override
+    public void prepareEnvironment(File modDir) {
+        File exec;
+        if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+            exec = new File(modDir, "youtube-dl.exe");
+        } else {
+            exec = new File(modDir, "youtube-dl");
+        }
+
+        if (exec.exists()) {
+            // update here
+        } else {
+            try (InputStream in = EXECUTABLE_URL.openStream()) {
+                Files.copy(in, exec.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                YoutubeDL.setExecutablePath(exec.getAbsolutePath());
+            } catch (IOException e) {
+                logger.error(e);
+            }
+        }
     }
 }

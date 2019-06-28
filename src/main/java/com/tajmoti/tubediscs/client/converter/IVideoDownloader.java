@@ -12,6 +12,8 @@ public interface IVideoDownloader {
 
     File downloadVideo(URL videoUrl, File targetDir) throws IOException;
 
+    void prepareEnvironment(File modDir);
+
     static String extractVideoId(URL videoUrl) {
         String str = videoUrl.toString();
         int index = str.indexOf("?v=");

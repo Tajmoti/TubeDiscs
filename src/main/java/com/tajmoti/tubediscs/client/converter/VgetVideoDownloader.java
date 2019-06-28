@@ -19,4 +19,9 @@ public class VgetVideoDownloader implements IVideoDownloader {
 
         return targetDir;
     }
+
+    @Override
+    public void prepareEnvironment(File modDir) {
+
+    }
 }
