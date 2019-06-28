@@ -101,9 +101,8 @@ public class TubeDiscs {
 
             // Stops music on disconnect
             MinecraftForge.EVENT_BUS.register(new ClientJukeboxHandler(audio));
-        } else {
-            // Sends cancel play message on block destroy
-            MinecraftForge.EVENT_BUS.register(new ServerJukeboxHandler(network));
         }
+        // Sends cancel play message on block destroy
+        MinecraftForge.EVENT_BUS.register(new ServerJukeboxHandler(network));
     }
 }
