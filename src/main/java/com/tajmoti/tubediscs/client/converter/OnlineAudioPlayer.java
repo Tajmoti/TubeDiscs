@@ -1,6 +1,5 @@
 package com.tajmoti.tubediscs.client.converter;
 
-import com.sapher.youtubedl.YoutubeDL;
 import com.tajmoti.tubediscs.client.sound.PositionedAudioPlayer;
 import com.tajmoti.tubediscs.util.AudioUtil;
 import net.minecraft.util.math.BlockPos;
@@ -45,7 +44,6 @@ public class OnlineAudioPlayer {
         this.audioPlayer = audioPlayer;
         this.executor = Executors.newFixedThreadPool(4);
         this.processorMap = new HashMap<>();
-        YoutubeDL.setExecutablePath("C:\\bin\\youtube-dl.exe");
         this.downloader = downloader;
     }
 
