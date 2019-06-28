@@ -15,6 +15,12 @@ import java.net.URL;
 public class YoutubeDlVideoDownloader implements IVideoDownloader {
     @Override
     public File downloadVideo(URL videoUrl, File targetDir) throws IOException {
+        File original = new File(targetDir, IVideoDownloader.extractVideoId(videoUrl));
+        File renamed = new File(targetDir, original.getName() + ".webm");
+
+        original.delete();
+        renamed.delete();
+
         // Build request
         YoutubeDLRequest request = new YoutubeDLRequest(videoUrl.toString(), targetDir.getAbsolutePath());
         request.setOption("ignore-errors");
@@ -28,9 +34,6 @@ public class YoutubeDlVideoDownloader implements IVideoDownloader {
         } catch (YoutubeDLException e) {
             throw new IOException(e);
         }
-
-        File original = new File(targetDir, IVideoDownloader.extractVideoId(videoUrl));
-        File renamed = new File(targetDir, original.getName() + ".webm");
 
         original.renameTo(renamed);
         return renamed;

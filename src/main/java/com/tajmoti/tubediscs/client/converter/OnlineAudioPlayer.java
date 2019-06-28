@@ -22,6 +22,7 @@ import java.util.concurrent.Future;
 public class OnlineAudioPlayer {
     private static final File AUDIO_CACHE = new File("tubediscs/audio");
     private static final File VIDEO_CACHE = new File("tubediscs/video");
+    private static final int DOWNLOAD_TRY_COUNT = 5;
 
     private final Logger logger;
     private final PositionedAudioPlayer audioPlayer;
@@ -59,7 +60,19 @@ public class OnlineAudioPlayer {
                 File audio = new File(AUDIO_CACHE, id + ".ogg");
                 if (!audio.exists()) {
                     logger.info(url + " does not exist, downloading…");
-                    File video = downloader.downloadVideo(url, VIDEO_CACHE);
+
+                    File video = null;
+                    for (int i = 0; i < DOWNLOAD_TRY_COUNT; i++) {
+                        try {
+                            video = downloader.downloadVideo(url, VIDEO_CACHE);
+                            break;
+                        } catch (IOException e) {
+                            logger.info("Download failed, retrying…");
+                            if (i == (DOWNLOAD_TRY_COUNT - 1) || Thread.interrupted())
+                                throw e;
+                        }
+                    }
+
                     logger.info(url + " downloaded, converting…");
                     AudioUtil.convertToOgg(video, audio);
                     logger.info(url + " converted, deleting video file…");
