@@ -47,7 +47,7 @@ public class OnlineAudioPlayer {
         this.downloader = downloader;
     }
 
-    public void playVideoAtPos(URL url, BlockPos pos, int offsetMillis) {
+    public synchronized void playVideoAtPos(URL url, BlockPos pos, int offsetMillis) {
         long timeReceived = System.currentTimeMillis();
         audioPlayer.stopAudioAtPos(pos);
 
@@ -92,7 +92,7 @@ public class OnlineAudioPlayer {
         processorMap.put(pos, f);
     }
 
-    public void cancel(BlockPos pos) {
+    public synchronized void cancel(BlockPos pos) {
         audioPlayer.stopAudioAtPos(pos);
 
         Future task = processorMap.get(pos);
@@ -100,7 +100,7 @@ public class OnlineAudioPlayer {
             task.cancel(true);
     }
 
-    public void cancelAll() {
+    public synchronized void cancelAll() {
         audioPlayer.stopAudio();
     }
 

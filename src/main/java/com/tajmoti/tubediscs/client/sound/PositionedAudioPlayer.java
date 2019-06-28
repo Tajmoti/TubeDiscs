@@ -38,7 +38,7 @@ public class PositionedAudioPlayer {
         this.worldAudioMap = new HashMap<>();
     }
 
-    public void playAudioAtPos(BlockPos pos, File file, int offsetMillis) throws IOException {
+    public synchronized void playAudioAtPos(BlockPos pos, File file, int offsetMillis) throws IOException {
         // Stop the old audio play at the position
         stopAudioAtPos(pos);
 
@@ -65,7 +65,7 @@ public class PositionedAudioPlayer {
         worldAudioMap.put(pos, sourcename);
     }
 
-    public void stopAudioAtPos(BlockPos pos) {
+    public synchronized void stopAudioAtPos(BlockPos pos) {
         String sourcename = worldAudioMap.get(pos);
         if (sourcename != null) {
             soundSystem.stop(sourcename);
@@ -74,7 +74,7 @@ public class PositionedAudioPlayer {
         }
     }
 
-    public void stopAudio() {
+    public synchronized void stopAudio() {
         worldAudioMap.forEach((pos, s) -> {
             soundSystem.stop(s);
             soundSystem.removeSource(s);
