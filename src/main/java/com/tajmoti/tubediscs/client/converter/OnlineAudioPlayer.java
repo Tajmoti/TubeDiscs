@@ -42,7 +42,7 @@ public class OnlineAudioPlayer {
     public OnlineAudioPlayer(Logger logger, IVideoDownloader downloader, PositionedAudioPlayer audioPlayer) {
         this.logger = logger;
         this.audioPlayer = audioPlayer;
-        this.executor = Executors.newFixedThreadPool(4);
+        this.executor = Executors.newCachedThreadPool();
         this.processorMap = new HashMap<>();
         this.downloader = downloader;
     }
