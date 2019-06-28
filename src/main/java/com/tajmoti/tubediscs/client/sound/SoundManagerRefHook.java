@@ -4,10 +4,13 @@ import com.tajmoti.tubediscs.TubeDiscs;
 import net.minecraft.client.audio.SoundHandler;
 import net.minecraft.client.audio.SoundManager;
 import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 import paulscode.sound.SoundSystem;
 
 import java.lang.reflect.Field;
 
+@SideOnly(Side.CLIENT)
 public class SoundManagerRefHook {
     private final Field sndManagerField;
     private final Field sndSystemField;

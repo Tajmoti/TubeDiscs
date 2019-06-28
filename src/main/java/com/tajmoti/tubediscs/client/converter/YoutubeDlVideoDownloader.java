@@ -4,11 +4,14 @@ import com.sapher.youtubedl.YoutubeDL;
 import com.sapher.youtubedl.YoutubeDLException;
 import com.sapher.youtubedl.YoutubeDLRequest;
 import com.sapher.youtubedl.YoutubeDLResponse;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 
+@SideOnly(Side.CLIENT)
 public class YoutubeDlVideoDownloader implements IVideoDownloader {
     @Override
     public File downloadVideo(URL videoUrl, File targetDir) throws IOException {

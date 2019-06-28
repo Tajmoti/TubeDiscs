@@ -1,6 +1,8 @@
 package com.tajmoti.tubediscs.client.sound.library;
 
 import com.tajmoti.tubediscs.TubeDiscs;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.openal.AL10;
@@ -14,6 +16,7 @@ import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.HashMap;
 
+@SideOnly(Side.CLIENT)
 public class LibraryLWJGLOpenALSeekable extends LibraryLWJGLOpenAL {
     private final Logger logger;
     private final SeekAmountGetter seekInfo;

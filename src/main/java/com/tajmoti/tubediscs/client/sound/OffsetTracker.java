@@ -1,10 +1,13 @@
 package com.tajmoti.tubediscs.client.sound;
 
 import com.tajmoti.tubediscs.client.sound.library.LibraryLWJGLOpenALSeekable;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 
 import java.util.HashMap;
 import java.util.Map;
 
+@SideOnly(Side.CLIENT)
 public class OffsetTracker implements LibraryLWJGLOpenALSeekable.SeekAmountGetter {
     /**
      * Offset for each "sourcename" (as in MC code).

@@ -1,5 +1,7 @@
 package com.tajmoti.tubediscs.client.sound.library;
 
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 import org.apache.logging.log4j.Logger;
 import paulscode.sound.libraries.LibraryLWJGLOpenAL;
 
@@ -8,6 +10,7 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.HashMap;
 
+@SideOnly(Side.CLIENT)
 public class LibraryLWJGLOpenALFieldAccessor {
     private final Logger logger;
     private final Field fieldBufferMap;

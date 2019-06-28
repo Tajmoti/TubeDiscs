@@ -1,9 +1,12 @@
 package com.tajmoti.tubediscs.util;
 
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 import ws.schild.jave.*;
 
 import java.io.File;
 
+@SideOnly(Side.CLIENT)
 public class AudioUtil {
 
     /**

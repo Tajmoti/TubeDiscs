@@ -4,6 +4,8 @@ import com.sapher.youtubedl.YoutubeDL;
 import com.tajmoti.tubediscs.client.sound.PositionedAudioPlayer;
 import com.tajmoti.tubediscs.util.AudioUtil;
 import net.minecraft.util.math.BlockPos;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 import org.apache.logging.log4j.Logger;
 import ws.schild.jave.EncoderException;
 
@@ -16,6 +18,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+@SideOnly(Side.CLIENT)
 public class OnlineAudioPlayer {
     private static final File AUDIO_CACHE = new File("tubediscs/audio");
     private static final File VIDEO_CACHE = new File("tubediscs/video");

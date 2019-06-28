@@ -2,6 +2,8 @@ package com.tajmoti.tubediscs.client.sound;
 
 import net.minecraft.client.audio.ISound;
 import net.minecraft.util.math.BlockPos;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 import org.apache.logging.log4j.Logger;
 import paulscode.sound.SoundSystem;
 
@@ -11,6 +13,7 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
+@SideOnly(Side.CLIENT)
 public class PositionedAudioPlayer {
     private final Logger logger;
     private final SoundSystem soundSystem;
