@@ -48,7 +48,6 @@ repositories {
 dependencies {
     compile 'ws.schild:jave-core:2.5.0'
     compile 'ws.schild:jave-nativebin-win64:2.5.0'
-    compile 'com.github.axet:vget:1.2.6'
     compile 'com.github.sapher:youtubedl-java:1.1'
 }
 
@@ -57,13 +56,11 @@ shadowJar {
     dependencies {
         include(dependency('ws.schild:jave-core:2.5.0'))
         include(dependency('ws.schild:jave-nativebin-win64:2.5.0'))
-        include(dependency('com.github.axet:vget:1.2.6'))
         include(dependency('com.github.sapher:youtubedl-java:1.1'))
     }
 
     // Relocate fluent-hc to prevent conflicts with other mods that include it
     relocate 'ws.schild', 'com.tajmoti.repack.ws.schild'
-    relocate 'com.github.axet', 'com.tajmoti.repack.com.github.axet'
     relocate 'com.sapher', 'com.tajmoti.repack.com.sapher'
 
     classifier '' // Replace the default JAR
