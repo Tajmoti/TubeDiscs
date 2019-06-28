@@ -6,8 +6,8 @@ import com.sapher.youtubedl.YoutubeDLRequest;
 import com.sapher.youtubedl.YoutubeDLResponse;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.logging.log4j.Logger;
-import org.codehaus.plexus.util.Os;
 
 import java.io.File;
 import java.io.IOException;
@@ -66,7 +66,7 @@ public class YoutubeDlVideoDownloader implements IVideoDownloader {
     @Override
     public void prepareEnvironment(File modDir) {
         File exec;
-        if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+        if (SystemUtils.IS_OS_WINDOWS) {
             exec = new File(modDir, "youtube-dl.exe");
         } else {
             exec = new File(modDir, "youtube-dl");
