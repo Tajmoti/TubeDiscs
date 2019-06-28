@@ -10,6 +10,7 @@ import net.minecraftforge.event.world.BlockEvent;
 import net.minecraftforge.fml.common.eventhandler.Event;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.network.simpleimpl.SimpleNetworkWrapper;
+import net.minecraftforge.fml.relauncher.Side;
 
 @SuppressWarnings("unused")
 public class ServerJukeboxHandler {
@@ -32,10 +33,17 @@ public class ServerJukeboxHandler {
 
     @SubscribeEvent
     public void onClick(PlayerInteractEvent.RightClickBlock event) {
-        World world = event.getWorld();
-        BlockPos pos = event.getPos();
-        if (world.getBlockState(pos).getBlock() instanceof BlockJukebox)
-            network.sendToAll(new TubeStopMessage(pos));
-        event.setResult(Event.Result.ALLOW);
+        if (event.getSide() == Side.SERVER) {
+            World world = event.getWorld();
+            BlockPos pos = event.getPos();
+            if (world.getBlockState(pos).getBlock() instanceof BlockJukebox) {
+                network.sendToAll(new TubeStopMessage(pos));
+                event.setResult(Event.Result.ALLOW);
+            } else {
+                event.setResult(Event.Result.DEFAULT);
+            }
+        } else {
+            event.setResult(Event.Result.DEFAULT);
+        }
     }
 }
