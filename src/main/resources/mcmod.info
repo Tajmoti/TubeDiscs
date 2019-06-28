@@ -1,14 +1,14 @@
 [
 {
-  "modid": "examplemod",
-  "name": "Example Mod",
-  "description": "Example placeholder mod.",
+  "modid": "tubediscs",
+  "name": "TubeDiscs",
+  "description": "Play online music tracks in jukeboxes. Ya fellas will hear it too!",
   "version": "${version}",
   "mcversion": "${mcversion}",
   "url": "",
   "updateUrl": "",
-  "authorList": ["ExampleDude"],
-  "credits": "The Forge and FML guys, for making this example",
+  "authorList": ["Tajmoti"],
+  "credits": "Tajmoti",
   "logoFile": "",
   "screenshots": [],
   "dependencies": []
