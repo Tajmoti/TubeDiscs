@@ -1,7 +1,6 @@
 package com.tajmoti.tubediscs;
 
 import com.tajmoti.tubediscs.audio.AudioTracker;
-import com.tajmoti.tubediscs.audio.client.ActiveRequest;
 import com.tajmoti.tubediscs.audio.client.PositionedAudioPlayer;
 import com.tajmoti.tubediscs.audio.client.SoundManagerRefHook;
 import com.tajmoti.tubediscs.audio.server.TimedAudioRequest;
@@ -42,8 +41,6 @@ public class TubeDiscs {
 
     @SideOnly(Side.CLIENT)
     private PositionedAudioPlayer audio;
-    @SideOnly(Side.CLIENT)
-    private AudioTracker<ActiveRequest> clientTracker;
     private AudioTracker<TimedAudioRequest> serverTracker;
 
 
@@ -51,52 +48,40 @@ public class TubeDiscs {
         return INSTANCE;
     }
 
-    public Logger getLogger() {
-        return logger;
-    }
-
-    public SimpleNetworkWrapper getNetwork() {
-        return network;
-    }
-
     @SideOnly(Side.CLIENT)
     public PositionedAudioPlayer getAudio() {
         return audio;
     }
 
-    public AudioTracker<TimedAudioRequest> getServerTracker() {
-        return serverTracker;
-    }
-
     @EventHandler
     public void preInit(FMLPreInitializationEvent event) {
         logger = event.getModLog();
-        MinecraftForge.EVENT_BUS.register(new RegistryHandler(logger));
+        network = NetworkRegistry.INSTANCE.newSimpleChannel(ModInfo.MODID);
+        serverTracker = new AudioTracker<>(logger);
+        MinecraftForge.EVENT_BUS.register(new RegistryHandler(logger, network, serverTracker));
     }
 
     @EventHandler
     public void init(FMLInitializationEvent event) {
         // Network messages
-        network = NetworkRegistry.INSTANCE.newSimpleChannel(ModInfo.MODID);
+
         network.registerMessage(TubePlayMessage.Handler.class, TubePlayMessage.class, 0, Side.CLIENT);
         network.registerMessage(TubeStopMessage.Handler.class, TubeStopMessage.class, 1, Side.CLIENT);
         network.registerMessage(TubeSaveMessage.Handler.class, TubeSaveMessage.class, 2, Side.SERVER);
 
         if (event.getSide() == Side.CLIENT) {
             // GUI
-            NetworkRegistry.INSTANCE.registerGuiHandler(this, new GuiHandler());
+            NetworkRegistry.INSTANCE.registerGuiHandler(this, new GuiHandler(logger, network));
 
             // Sound handlers
             SoundHandler handler = Minecraft.getMinecraft().getSoundHandler();
-            SoundSystem system = new SoundManagerRefHook(handler).getSoundSystem();
+            SoundSystem system = new SoundManagerRefHook(logger, handler).getSoundSystem();
 
-            clientTracker = new AudioTracker<>(logger);
-            audio = new PositionedAudioPlayer(logger, system, clientTracker);
+            audio = new PositionedAudioPlayer(logger, system);
 
             // Stops music on disconnect
             MinecraftForge.EVENT_BUS.register(new ClientJukeboxHandler(audio));
         }
-        serverTracker = new AudioTracker<>(logger);
         // Sends cancel play message on block destroy
         MinecraftForge.EVENT_BUS.register(new ServerJukeboxHandler(serverTracker, network));
     }

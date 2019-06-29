@@ -13,7 +13,9 @@ import com.sedmelluq.discord.lavaplayer.track.playback.AudioFrame;
 import com.sedmelluq.discord.lavaplayer.track.playback.TerminatorAudioFrame;
 import com.tajmoti.tubediscs.audio.AudioTracker;
 import com.tajmoti.tubediscs.audio.server.TimedAudioRequest;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.ISound;
+import net.minecraft.util.SoundCategory;
 import net.minecraft.util.math.BlockPos;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
@@ -35,11 +37,11 @@ public class PositionedAudioPlayer {
     private final AudioPlayerManager manager;
 
 
-    public PositionedAudioPlayer(Logger logger, SoundSystem ss, AudioTracker<ActiveRequest> tracker) {
+    public PositionedAudioPlayer(Logger logger, SoundSystem ss) {
         super();
         this.logger = logger;
         this.soundSystem = ss;
-        this.tracker = tracker;
+        this.tracker = new AudioTracker<>(logger);
         this.mcAudioFormat = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 44100f, 16, 2, 4, 44100f, false);
         this.manager = new DefaultAudioPlayerManager();
         this.manager.getConfiguration().setOutputFormat(StandardAudioDataFormats.COMMON_PCM_S16_LE);

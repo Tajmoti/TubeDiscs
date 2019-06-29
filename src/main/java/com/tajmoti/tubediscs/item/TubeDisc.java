@@ -1,6 +1,7 @@
 package com.tajmoti.tubediscs.item;
 
 import com.tajmoti.tubediscs.TubeDiscs;
+import com.tajmoti.tubediscs.audio.AudioTracker;
 import com.tajmoti.tubediscs.audio.server.TimedAudioRequest;
 import com.tajmoti.tubediscs.gui.TubeDiscGui;
 import com.tajmoti.tubediscs.net.TubePlayMessage;
@@ -33,11 +34,15 @@ import java.util.List;
 public class TubeDisc extends ItemRecord {
     private static final String NBT_URL = "url";
     private final Logger logger;
+    private final SimpleNetworkWrapper network;
+    private final AudioTracker<TimedAudioRequest> audio;
 
 
-    public TubeDisc(Logger logger) {
+    public TubeDisc(Logger logger, SimpleNetworkWrapper network, AudioTracker<TimedAudioRequest> audio) {
         super(null, null);
         this.logger = logger;
+        this.network = network;
+        this.audio = audio;
         setUnlocalizedName("tubedisc");
         setRegistryName("tubedisc");
         setCreativeTab(CreativeTabs.MISC);
@@ -74,13 +79,10 @@ public class TubeDisc extends ItemRecord {
         if (worldIn.isRemote)
             return EnumActionResult.SUCCESS;
 
-        TubeDiscs mod = TubeDiscs.getInstance();
-        SimpleNetworkWrapper net = mod.getNetwork();
-
         long worldTime = worldIn.getTotalWorldTime();
         TimedAudioRequest request = new TimedAudioRequest(player.dimension, pos, url.toString(), worldTime);
-        net.sendToAll(new TubePlayMessage(request, worldTime));
-        mod.getServerTracker().addSound(request);
+        network.sendToAll(new TubePlayMessage(request, worldTime));
+        audio.addSound(request);
 
         // Insert the record item into the jukebox
         ItemStack itemstack = player.getHeldItem(hand);

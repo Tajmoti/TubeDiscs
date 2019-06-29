@@ -1,6 +1,5 @@
 package com.tajmoti.tubediscs.gui;
 
-import com.tajmoti.tubediscs.TubeDiscs;
 import com.tajmoti.tubediscs.net.TubeSaveMessage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
@@ -9,6 +8,7 @@ import net.minecraft.client.gui.GuiTextField;
 import net.minecraftforge.fml.common.network.simpleimpl.SimpleNetworkWrapper;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -17,7 +17,16 @@ import java.net.URL;
 @SideOnly(Side.CLIENT)
 public class TubeDiscGui extends GuiScreen {
     public static final int ID = 0;
+
+    private final Logger logger;
+    private final SimpleNetworkWrapper network;
     private GuiTextField textField;
+
+
+    public TubeDiscGui(Logger logger, SimpleNetworkWrapper network) {
+        this.logger = logger;
+        this.network = network;
+    }
 
     @Override
     public void initGui() {
@@ -38,11 +47,10 @@ public class TubeDiscGui extends GuiScreen {
                     // Close the screen
                     Minecraft.getMinecraft().player.closeScreen();
                     // Send the update item message to the server
-                    SimpleNetworkWrapper net = TubeDiscs.getInstance().getNetwork();
                     TubeSaveMessage msg = new TubeSaveMessage(url);
-                    net.sendToServer(msg);
+                    network.sendToServer(msg);
                 } catch (MalformedURLException e) {
-                    // TODO
+                    logger.warn(e);
                 }
                 break;
         }
