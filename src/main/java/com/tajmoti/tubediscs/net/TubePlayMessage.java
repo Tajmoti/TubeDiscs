@@ -1,7 +1,7 @@
 package com.tajmoti.tubediscs.net;
 
 import com.tajmoti.tubediscs.TubeDiscs;
-import com.tajmoti.tubediscs.client.sound.PositionedAudioPlayer;
+import com.tajmoti.tubediscs.audio.server.TimedAudioRequest;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.util.math.BlockPos;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
@@ -9,10 +9,14 @@ import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
 import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
 
 public class TubePlayMessage implements IMessage {
-    private int dimen;
-    private BlockPos pos;
-    private int offset;
-    private String url;
+    private TimedAudioRequest request;
+    /**
+     * We also need to send the current server time in order
+     * to calculate the time offset in the track.
+     * Could be done on the server and then send just the difference,
+     * but that would require me to rewrite some of the mechanics.
+     */
+    private long serverTime;
 
 
     /**
@@ -25,35 +29,36 @@ public class TubePlayMessage implements IMessage {
     /**
      * Actual initializing constructor.
      */
-    public TubePlayMessage(int dimen, BlockPos pos, String url, int offset) {
-        this.dimen = dimen;
-        this.pos = pos;
-        this.offset = offset;
-        this.url = url;
+    public TubePlayMessage(TimedAudioRequest request, long serverTime) {
+        this.request = request;
+        this.serverTime = serverTime;
     }
 
     @Override
     public void fromBytes(ByteBuf buf) {
-        dimen = buf.readInt();
+        int dimen = buf.readInt();
         double x, y, z;
         x = buf.readDouble();
         y = buf.readDouble();
         z = buf.readDouble();
-        pos = new BlockPos(x, y, z);
-        offset = buf.readInt();
+        BlockPos pos = new BlockPos(x, y, z);
+        long startTime = buf.readLong();
+        this.serverTime = buf.readLong();
         byte[] bytes = new byte[buf.readableBytes()];
         buf.readBytes(bytes);
-        url = new String(bytes);
+        String url = new String(bytes);
+        this.request = new TimedAudioRequest(dimen, pos, url, startTime);
     }
 
     @Override
     public void toBytes(ByteBuf buf) {
-        buf.writeInt(dimen);
-        buf.writeDouble(pos.getX());
-        buf.writeDouble(pos.getY());
-        buf.writeDouble(pos.getZ());
-        buf.writeInt(offset);
-        buf.writeBytes(url.getBytes());
+        buf.writeInt(request.dimen);
+        buf.writeDouble(request.pos.getX());
+        buf.writeDouble(request.pos.getY());
+        buf.writeDouble(request.pos.getZ());
+        buf.writeLong(request.timeStarted);
+        buf.writeLong(serverTime);
+        buf.writeBytes(request.url.getBytes());
     }
 
 
@@ -61,11 +66,7 @@ public class TubePlayMessage implements IMessage {
         @Override
         public IMessage onMessage(TubePlayMessage message, MessageContext ctx) {
             TubeDiscs mod = TubeDiscs.getInstance();
-
-            PositionedAudioPlayer.Request request = new PositionedAudioPlayer.Request(message.dimen, message.pos, message.url);
-            int offset = message.offset;
-
-            mod.getAudio().playAudioAtPos(request, offset);
+            mod.getAudio().playAudioAtPos(message.request, message.serverTime);
             return null;
         }
     }

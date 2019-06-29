@@ -1,7 +1,8 @@
 package com.tajmoti.tubediscs.item;
 
 import com.tajmoti.tubediscs.TubeDiscs;
-import com.tajmoti.tubediscs.client.gui.TubeDiscGui;
+import com.tajmoti.tubediscs.audio.server.TimedAudioRequest;
+import com.tajmoti.tubediscs.gui.TubeDiscGui;
 import com.tajmoti.tubediscs.net.TubePlayMessage;
 import net.minecraft.block.BlockJukebox;
 import net.minecraft.block.state.IBlockState;
@@ -73,10 +74,13 @@ public class TubeDisc extends ItemRecord {
         if (worldIn.isRemote)
             return EnumActionResult.SUCCESS;
 
-        SimpleNetworkWrapper net = TubeDiscs.getInstance().getNetwork();
-        // TODO track song offset
-        TubePlayMessage msg = new TubePlayMessage(player.dimension, pos, url.toString(), 0);
-        net.sendToAll(msg);
+        TubeDiscs mod = TubeDiscs.getInstance();
+        SimpleNetworkWrapper net = mod.getNetwork();
+
+        long worldTime = worldIn.getTotalWorldTime();
+        TimedAudioRequest request = new TimedAudioRequest(player.dimension, pos, url.toString(), worldTime);
+        net.sendToAll(new TubePlayMessage(request, worldTime));
+        mod.getServerTracker().addSound(request);
 
         // Insert the record item into the jukebox
         ItemStack itemstack = player.getHeldItem(hand);

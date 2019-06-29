@@ -1,11 +1,14 @@
 package com.tajmoti.tubediscs;
 
-import com.tajmoti.tubediscs.client.gui.GuiHandler;
-import com.tajmoti.tubediscs.client.sound.PositionedAudioPlayer;
-import com.tajmoti.tubediscs.client.sound.SoundManagerRefHook;
+import com.tajmoti.tubediscs.audio.AudioTracker;
+import com.tajmoti.tubediscs.audio.client.ActiveRequest;
+import com.tajmoti.tubediscs.audio.client.PositionedAudioPlayer;
+import com.tajmoti.tubediscs.audio.client.SoundManagerRefHook;
+import com.tajmoti.tubediscs.audio.server.TimedAudioRequest;
 import com.tajmoti.tubediscs.event.ClientJukeboxHandler;
+import com.tajmoti.tubediscs.event.RegistryHandler;
 import com.tajmoti.tubediscs.event.ServerJukeboxHandler;
-import com.tajmoti.tubediscs.item.ModItems;
+import com.tajmoti.tubediscs.gui.GuiHandler;
 import com.tajmoti.tubediscs.net.TubePlayMessage;
 import com.tajmoti.tubediscs.net.TubeSaveMessage;
 import com.tajmoti.tubediscs.net.TubeStopMessage;
@@ -16,6 +19,7 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLServerStoppingEvent;
 import net.minecraftforge.fml.common.network.NetworkRegistry;
 import net.minecraftforge.fml.common.network.simpleimpl.SimpleNetworkWrapper;
 import net.minecraftforge.fml.relauncher.Side;
@@ -38,6 +42,9 @@ public class TubeDiscs {
 
     @SideOnly(Side.CLIENT)
     private PositionedAudioPlayer audio;
+    @SideOnly(Side.CLIENT)
+    private AudioTracker<ActiveRequest> clientTracker;
+    private AudioTracker<TimedAudioRequest> serverTracker;
 
 
     public static TubeDiscs getInstance() {
@@ -57,10 +64,14 @@ public class TubeDiscs {
         return audio;
     }
 
+    public AudioTracker<TimedAudioRequest> getServerTracker() {
+        return serverTracker;
+    }
+
     @EventHandler
     public void preInit(FMLPreInitializationEvent event) {
         logger = event.getModLog();
-        ModItems.init();
+        MinecraftForge.EVENT_BUS.register(new RegistryHandler(logger));
     }
 
     @EventHandler
@@ -79,12 +90,19 @@ public class TubeDiscs {
             SoundHandler handler = Minecraft.getMinecraft().getSoundHandler();
             SoundSystem system = new SoundManagerRefHook(handler).getSoundSystem();
 
-            audio = new PositionedAudioPlayer(logger, system);
+            clientTracker = new AudioTracker<>(logger);
+            audio = new PositionedAudioPlayer(logger, system, clientTracker);
 
             // Stops music on disconnect
             MinecraftForge.EVENT_BUS.register(new ClientJukeboxHandler(audio));
         }
+        serverTracker = new AudioTracker<>(logger);
         // Sends cancel play message on block destroy
-        MinecraftForge.EVENT_BUS.register(new ServerJukeboxHandler(network));
+        MinecraftForge.EVENT_BUS.register(new ServerJukeboxHandler(serverTracker, network));
+    }
+
+    @EventHandler
+    public void serverStopping(FMLServerStoppingEvent event) {
+        serverTracker.removeAllSounds();
     }
 }

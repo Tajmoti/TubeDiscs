@@ -1,4 +1,4 @@
-package com.tajmoti.tubediscs.client.sound;
+package com.tajmoti.tubediscs.audio.client;
 
 import com.tajmoti.tubediscs.TubeDiscs;
 import net.minecraft.client.audio.SoundHandler;

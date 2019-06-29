@@ -1,6 +1,6 @@
 package com.tajmoti.tubediscs.event;
 
-import com.tajmoti.tubediscs.client.sound.PositionedAudioPlayer;
+import com.tajmoti.tubediscs.audio.client.PositionedAudioPlayer;
 import net.minecraftforge.fml.common.eventhandler.Event;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.network.FMLNetworkEvent;

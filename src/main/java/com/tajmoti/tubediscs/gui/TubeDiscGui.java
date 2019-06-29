@@ -1,4 +1,4 @@
-package com.tajmoti.tubediscs.client.gui;
+package com.tajmoti.tubediscs.gui;
 
 import com.tajmoti.tubediscs.TubeDiscs;
 import com.tajmoti.tubediscs.net.TubeSaveMessage;

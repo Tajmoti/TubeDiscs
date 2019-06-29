@@ -1,4 +1,4 @@
-package com.tajmoti.tubediscs.client.sound;
+package com.tajmoti.tubediscs.audio.client;
 
 import com.sedmelluq.discord.lavaplayer.format.StandardAudioDataFormats;
 import com.sedmelluq.discord.lavaplayer.player.AudioLoadResultHandler;
@@ -11,6 +11,8 @@ import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.playback.AudioFrame;
 import com.sedmelluq.discord.lavaplayer.track.playback.TerminatorAudioFrame;
+import com.tajmoti.tubediscs.audio.AudioTracker;
+import com.tajmoti.tubediscs.audio.server.TimedAudioRequest;
 import net.minecraft.client.audio.ISound;
 import net.minecraft.util.math.BlockPos;
 import net.minecraftforge.fml.relauncher.Side;
@@ -18,10 +20,7 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 import org.apache.logging.log4j.Logger;
 import paulscode.sound.SoundSystem;
 
-import javax.annotation.Nullable;
 import javax.sound.sampled.AudioFormat;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -30,20 +29,17 @@ import java.util.concurrent.TimeoutException;
 public class PositionedAudioPlayer {
     private final Logger logger;
     private final SoundSystem soundSystem;
-    /**
-     * What sound is played where. Added on playback start,
-     * removed when the playback is canceled.
-     */
-    private final List<ActiveRequest> playingSounds;
+    private final AudioTracker<ActiveRequest> tracker;
 
     private final AudioFormat mcAudioFormat;
     private final AudioPlayerManager manager;
 
 
-    public PositionedAudioPlayer(Logger logger, SoundSystem ss) {
+    public PositionedAudioPlayer(Logger logger, SoundSystem ss, AudioTracker<ActiveRequest> tracker) {
+        super();
         this.logger = logger;
         this.soundSystem = ss;
-        this.playingSounds = new ArrayList<>();
+        this.tracker = tracker;
         this.mcAudioFormat = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 44100f, 16, 2, 4, 44100f, false);
         this.manager = new DefaultAudioPlayerManager();
         this.manager.getConfiguration().setOutputFormat(StandardAudioDataFormats.COMMON_PCM_S16_LE);
@@ -51,9 +47,7 @@ public class PositionedAudioPlayer {
         this.manager.setUseSeekGhosting(false);
     }
 
-    public synchronized void playAudioAtPos(Request request, int offsetMillis) {
-        // Track how long it takes to buffer up and skip the lost time
-        long timeReceived = System.currentTimeMillis();
+    public synchronized void playAudioAtPos(TimedAudioRequest request, long worldTime) {
         // Stop the old audio play at the position
         stopAudioAtPos(request.dimen, request.pos);
 
@@ -64,57 +58,45 @@ public class PositionedAudioPlayer {
         float distOrRoll = 16.0F;
         soundSystem.rawDataStream(mcAudioFormat, false, sourcename, request.pos.getX(), request.pos.getY(), request.pos.getZ(), attType, distOrRoll);
         logger.info("Submitting SoundSystem request to play " + request.toString());
+        soundSystem.setPosition(sourcename, request.pos.getX(), request.pos.getY(), request.pos.getZ());
 
         ActiveRequest active = new ActiveRequest(request, sourcename);
-        // Save the audio ref
-        playingSounds.add(active);
         // Fill the buffers and play
-        loadPlayFillBuffers(active, sourcename, offsetMillis, timeReceived);
+        loadPlayFillBuffers(active, sourcename, worldTime);
+        tracker.addSound(active);
     }
 
     public synchronized void stopAudioAtPos(int dimen, BlockPos pos) {
-        ActiveRequest activeRequest = findExistingRequest(dimen, pos);
+        ActiveRequest activeRequest = tracker.removeSoundAtPos(dimen, pos);
         if (activeRequest != null) {
-            logger.info("Stopping audio at pos " + pos.toString());
             soundSystem.stop(activeRequest.sourcename);
             soundSystem.removeSource(activeRequest.sourcename);
-            playingSounds.remove(activeRequest);
         }
     }
 
     private synchronized void stopAudioAtPosIfValid(int dimen, BlockPos pos, String sourcename) {
-        ActiveRequest activeRequest = findExistingRequest(dimen, pos);
+        ActiveRequest activeRequest = tracker.findExistingRequest(dimen, pos);
         if (activeRequest != null && activeRequest.isMatchingRequest(dimen, pos) && activeRequest.sourcename.equals(sourcename)) {
-            logger.info("Stopping audio (matching sourcename) at pos " + pos.toString());
             soundSystem.stop(sourcename);
             soundSystem.removeSource(sourcename);
-            playingSounds.remove(activeRequest);
+            tracker.removeSound(activeRequest);
         }
     }
 
-    public synchronized void stopAllAudio() {
-        logger.info("Stopping all audio");
-        playingSounds.forEach((req) -> {
-            soundSystem.stop(req.sourcename);
-            soundSystem.removeSource(req.sourcename);
-        });
-        playingSounds.clear();
+    public void stopAllAudio() {
+        for (ActiveRequest request : tracker.getAllSounds()) {
+            soundSystem.stop(request.sourcename);
+            soundSystem.removeSource(request.sourcename);
+        }
+        tracker.removeAllSounds();
     }
 
-
-    @Nullable
-    private ActiveRequest findExistingRequest(int dimen, BlockPos pos) {
-        for (ActiveRequest request : playingSounds)
-            if (request.isMatchingRequest(dimen, pos))
-                return request;
-        return null;
-    }
-
-    private void loadPlayFillBuffers(ActiveRequest request, String sourcename, int offset, long received) {
+    private void loadPlayFillBuffers(ActiveRequest request, String sourcename, long worldTicksNow) {
+        long loadingStart = System.currentTimeMillis();
         manager.loadItem(request.url, new AudioLoadResultHandler() {
             @Override
             public void trackLoaded(AudioTrack track) {
-                fillBuffers(request, track, offset, received);
+                fillBuffers(request, track, worldTicksNow, System.currentTimeMillis() - loadingStart);
             }
 
             @Override
@@ -137,7 +119,7 @@ public class PositionedAudioPlayer {
         });
     }
 
-    private void fillBuffers(ActiveRequest request, AudioTrack track, int offset, long received) {
+    private void fillBuffers(ActiveRequest request, AudioTrack track, long ticksNow, long millisWastedLoading) {
         AudioPlayer player = manager.createPlayer();
         player.playTrack(track);
 
@@ -157,15 +139,15 @@ public class PositionedAudioPlayer {
             soundSystem.CommandQueue(null);
             // Check if the sound should still be playing
             synchronized (PositionedAudioPlayer.this) {
-                ActiveRequest fromList = findExistingRequest(request.dimen, request.pos);
+                ActiveRequest fromList = tracker.findExistingRequest(request.dimen, request.pos);
                 if (fromList == null || !fromList.sourcename.equals(request.sourcename)) {
                     logger.warn("Playing of {} canceled, breaking from feed loop", request);
                     player.destroy();
                     break;
                 }
             }
-
-            long skipMillis = System.currentTimeMillis() - received + offset;
+            long skipTicks = ticksNow - request.timeStarted;
+            long skipMillis = (skipTicks / 20) * 1000 + millisWastedLoading;
             int skipBytes = millisToBytes(skipMillis);
             int receivedBytes = frame.getDataLength();
             if (processedBytes > skipBytes) {
@@ -190,49 +172,5 @@ public class PositionedAudioPlayer {
         float totalOffsetBytes = (totalOffsetMillis * mcAudioFormat.getFrameRate() / 1000) * frameSize;
         // Offset must be multiple of a frame!
         return (int) totalOffsetBytes / frameSize * frameSize;
-    }
-
-    public static class Request {
-        protected final int dimen;
-        protected final BlockPos pos;
-        protected final String url;
-
-        public Request(int dimen, BlockPos pos, String url) {
-            this.dimen = dimen;
-            this.pos = pos;
-            this.url = url;
-        }
-
-        public boolean isMatchingRequest(int dimen, BlockPos pos) {
-            return this.dimen == dimen && this.pos.equals(pos);
-        }
-
-        @Override
-        public String toString() {
-            return "Request{" +
-                    "url='" + url + '\'' +
-                    ", dimen=" + dimen +
-                    ", pos=" + pos +
-                    '}';
-        }
-    }
-
-    private static class ActiveRequest extends Request {
-        private final String sourcename;
-
-        public ActiveRequest(Request request, String sourcename) {
-            super(request.dimen, request.pos, request.url);
-            this.sourcename = sourcename;
-        }
-
-        @Override
-        public String toString() {
-            return "ActiveRequest{" +
-                    "url='" + url + '\'' +
-                    ", dimen=" + dimen +
-                    ", pos=" + pos +
-                    ", sourcename='" + sourcename + '\'' +
-                    '}';
-        }
     }
 }
