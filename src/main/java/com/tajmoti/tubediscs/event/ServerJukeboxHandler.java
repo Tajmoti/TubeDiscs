@@ -33,8 +33,11 @@ public class ServerJukeboxHandler {
         World w = event.getWorld();
         BlockPos pos = event.getPos();
         IBlockState s = w.getBlockState(pos);
-        if (s.getBlock() instanceof BlockJukebox)
+        if (s.getBlock() instanceof BlockJukebox) {
+            int dimen = event.getPlayer().dimension;
             network.sendToAll(new TubeStopMessage(event.getPlayer().dimension, pos));
+            tracker.removeSoundAtPos(dimen, pos);
+        }
         event.setResult(Event.Result.ALLOW);
     }
 
