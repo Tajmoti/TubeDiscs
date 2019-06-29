@@ -75,7 +75,7 @@ public class TubeDisc extends ItemRecord {
 
         SimpleNetworkWrapper net = TubeDiscs.getInstance().getNetwork();
         // TODO track song offset
-        TubePlayMessage msg = new TubePlayMessage(pos, url.toString(), 0);
+        TubePlayMessage msg = new TubePlayMessage(player.dimension, pos, url.toString(), 0);
         net.sendToAll(msg);
 
         // Insert the record item into the jukebox

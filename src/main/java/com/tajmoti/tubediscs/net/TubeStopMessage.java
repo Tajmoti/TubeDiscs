@@ -10,6 +10,7 @@ import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
 import net.minecraftforge.fml.relauncher.Side;
 
 public class TubeStopMessage implements IMessage {
+    private int dimen;
     private BlockPos pos;
 
 
@@ -23,12 +24,14 @@ public class TubeStopMessage implements IMessage {
     /**
      * Actual initializing constructor.
      */
-    public TubeStopMessage(BlockPos pos) {
+    public TubeStopMessage(int dimen, BlockPos pos) {
+        this.dimen = dimen;
         this.pos = pos;
     }
 
     @Override
     public void fromBytes(ByteBuf buf) {
+        dimen = buf.readInt();
         double x, y, z;
         x = buf.readDouble();
         y = buf.readDouble();
@@ -38,6 +41,7 @@ public class TubeStopMessage implements IMessage {
 
     @Override
     public void toBytes(ByteBuf buf) {
+        buf.writeInt(dimen);
         buf.writeDouble(pos.getX());
         buf.writeDouble(pos.getY());
         buf.writeDouble(pos.getZ());
@@ -49,7 +53,7 @@ public class TubeStopMessage implements IMessage {
         public IMessage onMessage(TubeStopMessage message, MessageContext ctx) {
             if (ctx.side == Side.CLIENT) {
                 Minecraft.getMinecraft().addScheduledTask(() -> {
-                    TubeDiscs.getInstance().getAudio().stopAudioAtPos(message.pos);
+                    TubeDiscs.getInstance().getAudio().stopAudioAtPos(message.dimen, message.pos);
                 });
             }
             return null;

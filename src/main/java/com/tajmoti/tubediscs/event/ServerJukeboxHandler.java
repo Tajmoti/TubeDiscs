@@ -27,7 +27,7 @@ public class ServerJukeboxHandler {
         BlockPos pos = event.getPos();
         IBlockState s = w.getBlockState(pos);
         if (s.getBlock() instanceof BlockJukebox)
-            network.sendToAll(new TubeStopMessage(pos));
+            network.sendToAll(new TubeStopMessage(event.getPlayer().dimension, pos));
         event.setResult(Event.Result.ALLOW);
     }
 
@@ -36,9 +36,9 @@ public class ServerJukeboxHandler {
         if (event.getSide() == Side.SERVER) {
             World world = event.getWorld();
             BlockPos pos = event.getPos();
-            if (world.getBlockState(pos).getBlock() instanceof BlockJukebox) {
-                // TODO bullshit
-                //network.sendToAll(new TubeStopMessage(pos));
+            IBlockState state = world.getBlockState(pos);
+            if (state.getBlock() instanceof BlockJukebox && state.getValue(BlockJukebox.HAS_RECORD)) {
+                network.sendToAll(new TubeStopMessage(event.getEntityPlayer().dimension, pos));
                 event.setResult(Event.Result.ALLOW);
             } else {
                 event.setResult(Event.Result.DEFAULT);

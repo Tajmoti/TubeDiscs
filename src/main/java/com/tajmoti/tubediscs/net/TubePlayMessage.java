@@ -1,6 +1,7 @@
 package com.tajmoti.tubediscs.net;
 
 import com.tajmoti.tubediscs.TubeDiscs;
+import com.tajmoti.tubediscs.client.sound.PositionedAudioPlayer;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.util.math.BlockPos;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
@@ -8,6 +9,7 @@ import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
 import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
 
 public class TubePlayMessage implements IMessage {
+    private int dimen;
     private BlockPos pos;
     private int offset;
     private String url;
@@ -23,7 +25,8 @@ public class TubePlayMessage implements IMessage {
     /**
      * Actual initializing constructor.
      */
-    public TubePlayMessage(BlockPos pos, String url, int offset) {
+    public TubePlayMessage(int dimen, BlockPos pos, String url, int offset) {
+        this.dimen = dimen;
         this.pos = pos;
         this.offset = offset;
         this.url = url;
@@ -31,6 +34,7 @@ public class TubePlayMessage implements IMessage {
 
     @Override
     public void fromBytes(ByteBuf buf) {
+        dimen = buf.readInt();
         double x, y, z;
         x = buf.readDouble();
         y = buf.readDouble();
@@ -44,6 +48,7 @@ public class TubePlayMessage implements IMessage {
 
     @Override
     public void toBytes(ByteBuf buf) {
+        buf.writeInt(dimen);
         buf.writeDouble(pos.getX());
         buf.writeDouble(pos.getY());
         buf.writeDouble(pos.getZ());
@@ -57,12 +62,10 @@ public class TubePlayMessage implements IMessage {
         public IMessage onMessage(TubePlayMessage message, MessageContext ctx) {
             TubeDiscs mod = TubeDiscs.getInstance();
 
-            String url = message.url;
-            BlockPos pos = message.pos;
+            PositionedAudioPlayer.Request request = new PositionedAudioPlayer.Request(message.dimen, message.pos, message.url);
             int offset = message.offset;
 
-            mod.getLogger().info("Requested playback of " + url + " at " + pos.toString() + " with offset " + offset);
-            mod.getAudio().playAudioAtPos(url, pos, offset);
+            mod.getAudio().playAudioAtPos(request, offset);
             return null;
         }
     }
