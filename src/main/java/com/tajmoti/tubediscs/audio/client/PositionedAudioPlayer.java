@@ -58,8 +58,6 @@ public class PositionedAudioPlayer {
         float distOrRoll = 16.0F;
         soundSystem.rawDataStream(mcAudioFormat, false, sourcename, request.pos.getX(), request.pos.getY(), request.pos.getZ(), attType, distOrRoll);
         logger.info("Submitting SoundSystem request to play " + request.toString());
-        soundSystem.setPosition(sourcename, request.pos.getX(), request.pos.getY(), request.pos.getZ());
-
         ActiveRequest active = new ActiveRequest(request, sourcename);
         // Fill the buffers and play
         loadPlayFillBuffers(active, sourcename, worldTime);
@@ -121,6 +119,7 @@ public class PositionedAudioPlayer {
 
     private void fillBuffers(ActiveRequest request, AudioTrack track, long ticksNow, long millisWastedLoading) {
         AudioPlayer player = manager.createPlayer();
+        player.setVolume((int) (Minecraft.getMinecraft().gameSettings.getSoundLevel(SoundCategory.RECORDS) * 100.0f));
         player.playTrack(track);
 
         int processedBytes = 0;
