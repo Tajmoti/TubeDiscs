@@ -10,7 +10,6 @@ import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
 import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.playback.AudioFrame;
-import com.sedmelluq.discord.lavaplayer.track.playback.TerminatorAudioFrame;
 import com.tajmoti.tubediscs.audio.AudioTracker;
 import com.tajmoti.tubediscs.audio.server.TimedAudioRequest;
 import net.minecraft.client.Minecraft;
@@ -130,7 +129,7 @@ public class PositionedAudioPlayer {
             // Load the next frame or quit the loop on no data
             try {
                 frame = player.provide(8, TimeUnit.SECONDS);
-                if (frame instanceof TerminatorAudioFrame || frame == null)
+                if (frame == null || frame.isTerminator())
                     break;
             } catch (TimeoutException | InterruptedException e) {
                 logger.warn(e);
