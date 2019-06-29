@@ -33,7 +33,6 @@ public class PositionedAudioPlayer {
     /**
      * What sound is played where. Added on playback start,
      * removed when the playback is canceled.
-     * The value is the "sourcename" variable (as in MC code).
      */
     private final List<ActiveRequest> playingSounds;
 
@@ -53,6 +52,8 @@ public class PositionedAudioPlayer {
     }
 
     public synchronized void playAudioAtPos(Request request, int offsetMillis) {
+        // Track how long it takes to buffer up and skip the lost time
+        long timeReceived = System.currentTimeMillis();
         // Stop the old audio play at the position
         stopAudioAtPos(request.dimen, request.pos);
 
@@ -68,7 +69,7 @@ public class PositionedAudioPlayer {
         // Save the audio ref
         playingSounds.add(active);
         // Fill the buffers and play
-        loadPlayFillBuffers(active, sourcename);
+        loadPlayFillBuffers(active, sourcename, offsetMillis, timeReceived);
     }
 
     public synchronized void stopAudioAtPos(int dimen, BlockPos pos) {
@@ -109,11 +110,11 @@ public class PositionedAudioPlayer {
         return null;
     }
 
-    private void loadPlayFillBuffers(ActiveRequest request, String sourcename) {
+    private void loadPlayFillBuffers(ActiveRequest request, String sourcename, int offset, long received) {
         manager.loadItem(request.url, new AudioLoadResultHandler() {
             @Override
             public void trackLoaded(AudioTrack track) {
-                fillBuffers(request, track);
+                fillBuffers(request, track, offset, received);
             }
 
             @Override
@@ -136,34 +137,59 @@ public class PositionedAudioPlayer {
         });
     }
 
-    private void fillBuffers(ActiveRequest request, AudioTrack track) {
+    private void fillBuffers(ActiveRequest request, AudioTrack track, int offset, long received) {
         AudioPlayer player = manager.createPlayer();
         player.playTrack(track);
 
+        int processedBytes = 0;
         AudioFrame frame;
         while (true) {
+            // Load the next frame or quit the loop on no data
             try {
-                // Load frames until the end
                 frame = player.provide(8, TimeUnit.SECONDS);
                 if (frame instanceof TerminatorAudioFrame || frame == null)
                     break;
-                // Clear up any queued commands
-                soundSystem.CommandQueue(null);
-                // Check if the sound should still be playing
-                synchronized (PositionedAudioPlayer.this) {
-                    ActiveRequest fromList = findExistingRequest(request.dimen, request.pos);
-                    if (fromList == null || !fromList.sourcename.equals(request.sourcename)) {
-                        logger.warn("Playing of {} canceled, breaking from feed loop", request);
-                        player.destroy();
-                        break;
-                    }
-                }
-                soundSystem.feedRawAudioData(request.sourcename, frame.getData());
             } catch (TimeoutException | InterruptedException e) {
                 logger.warn(e);
                 break;
             }
+            // Clear up any queued commands
+            soundSystem.CommandQueue(null);
+            // Check if the sound should still be playing
+            synchronized (PositionedAudioPlayer.this) {
+                ActiveRequest fromList = findExistingRequest(request.dimen, request.pos);
+                if (fromList == null || !fromList.sourcename.equals(request.sourcename)) {
+                    logger.warn("Playing of {} canceled, breaking from feed loop", request);
+                    player.destroy();
+                    break;
+                }
+            }
+
+            long skipMillis = System.currentTimeMillis() - received + offset;
+            int skipBytes = millisToBytes(skipMillis);
+            int receivedBytes = frame.getDataLength();
+            if (processedBytes > skipBytes) {
+                // We are already behind the cut-off point, continue loading normally
+                soundSystem.feedRawAudioData(request.sourcename, frame.getData());
+            } else if (skipBytes <= (receivedBytes + processedBytes)) {
+                // This portion contains the cut-off point
+                skipBytes = skipBytes - processedBytes;
+
+                int portionLength = receivedBytes - skipBytes;
+                byte[] portion = new byte[portionLength];
+                System.arraycopy(frame.getData(), skipBytes, portion, 0, portionLength);
+
+                soundSystem.feedRawAudioData(request.sourcename, portion);
+            }
+            processedBytes += receivedBytes;
         }
+    }
+
+    private int millisToBytes(long totalOffsetMillis) {
+        int frameSize = mcAudioFormat.getFrameSize();
+        float totalOffsetBytes = (totalOffsetMillis * mcAudioFormat.getFrameRate() / 1000) * frameSize;
+        // Offset must be multiple of a frame!
+        return (int) totalOffsetBytes / frameSize * frameSize;
     }
 
     public static class Request {
