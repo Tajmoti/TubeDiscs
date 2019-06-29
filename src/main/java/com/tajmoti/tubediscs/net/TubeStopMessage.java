@@ -49,7 +49,7 @@ public class TubeStopMessage implements IMessage {
         public IMessage onMessage(TubeStopMessage message, MessageContext ctx) {
             if (ctx.side == Side.CLIENT) {
                 Minecraft.getMinecraft().addScheduledTask(() -> {
-                    TubeDiscs.getInstance().getAudio().cancel(message.pos);
+                    TubeDiscs.getInstance().getAudio().stopAudioAtPos(message.pos);
                 });
             }
             return null;

@@ -37,7 +37,8 @@ public class ServerJukeboxHandler {
             World world = event.getWorld();
             BlockPos pos = event.getPos();
             if (world.getBlockState(pos).getBlock() instanceof BlockJukebox) {
-                network.sendToAll(new TubeStopMessage(pos));
+                // TODO bullshit
+                //network.sendToAll(new TubeStopMessage(pos));
                 event.setResult(Event.Result.ALLOW);
             } else {
                 event.setResult(Event.Result.DEFAULT);

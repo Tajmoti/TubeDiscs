@@ -40,28 +40,21 @@ minecraft {
 
 repositories {
     mavenCentral()
-    maven { url = "http://dvs1.progwml6.com/files/maven" }
-    maven { url = "http://tehnut.info/maven" }
-    maven { url 'https://jitpack.io' }
+    jcenter()
 }
 
 dependencies {
-    compile 'ws.schild:jave-core:2.5.0'
-    compile 'ws.schild:jave-nativebin-win64:2.5.0'
-    compile 'com.github.sapher:youtubedl-java:1.1'
+    compile 'com.sedmelluq:lavaplayer:1.3.17'
 }
 
 shadowJar {
     // Only shadow fluent-hc
     dependencies {
-        include(dependency('ws.schild:jave-core:2.5.0'))
-        include(dependency('ws.schild:jave-nativebin-win64:2.5.0'))
-        include(dependency('com.github.sapher:youtubedl-java:1.1'))
+        include(dependency('com.sedmelluq:lavaplayer:1.3.17'))
     }
 
     // Relocate fluent-hc to prevent conflicts with other mods that include it
-    relocate 'ws.schild', 'com.tajmoti.repack.ws.schild'
-    relocate 'com.sapher', 'com.tajmoti.repack.com.sapher'
+    relocate 'com.sedmelluq', 'com.tajmoti.repack.com.sedmelluq'
 
     classifier '' // Replace the default JAR
 }

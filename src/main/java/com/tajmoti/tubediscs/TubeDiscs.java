@@ -1,14 +1,9 @@
 package com.tajmoti.tubediscs;
 
-import com.tajmoti.tubediscs.client.converter.IVideoDownloader;
-import com.tajmoti.tubediscs.client.converter.OnlineAudioPlayer;
-import com.tajmoti.tubediscs.client.converter.YoutubeDlVideoDownloader;
 import com.tajmoti.tubediscs.client.gui.GuiHandler;
-import com.tajmoti.tubediscs.client.sound.OffsetTracker;
 import com.tajmoti.tubediscs.client.sound.PositionedAudioPlayer;
 import com.tajmoti.tubediscs.client.sound.SoundManagerRefHook;
 import com.tajmoti.tubediscs.event.ClientJukeboxHandler;
-import com.tajmoti.tubediscs.event.ClientSoundLibReplacer;
 import com.tajmoti.tubediscs.event.ServerJukeboxHandler;
 import com.tajmoti.tubediscs.item.ModItems;
 import com.tajmoti.tubediscs.net.TubePlayMessage;
@@ -28,8 +23,6 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 import org.apache.logging.log4j.Logger;
 import paulscode.sound.SoundSystem;
 
-import java.io.File;
-
 @Mod(modid = ModInfo.MODID, name = ModInfo.NAME, version = ModInfo.VERSION)
 public class TubeDiscs {
     @Mod.Instance
@@ -44,10 +37,7 @@ public class TubeDiscs {
     private SimpleNetworkWrapper network;
 
     @SideOnly(Side.CLIENT)
-    private OnlineAudioPlayer audio;
-
-    @SideOnly(Side.CLIENT)
-    private OffsetTracker seekTracker;
+    private PositionedAudioPlayer audio;
 
 
     public static TubeDiscs getInstance() {
@@ -63,25 +53,14 @@ public class TubeDiscs {
     }
 
     @SideOnly(Side.CLIENT)
-    public OnlineAudioPlayer getAudio() {
+    public PositionedAudioPlayer getAudio() {
         return audio;
-    }
-
-    @SideOnly(Side.CLIENT)
-    public OffsetTracker getSeekTracker() {
-        return seekTracker;
     }
 
     @EventHandler
     public void preInit(FMLPreInitializationEvent event) {
         logger = event.getModLog();
         ModItems.init();
-
-        // Register custom codec and audio handler
-        if (event.getSide() == Side.CLIENT) {
-            seekTracker = new OffsetTracker();
-            MinecraftForge.EVENT_BUS.register(new ClientSoundLibReplacer(logger));
-        }
     }
 
     @EventHandler
@@ -100,12 +79,7 @@ public class TubeDiscs {
             SoundHandler handler = Minecraft.getMinecraft().getSoundHandler();
             SoundSystem system = new SoundManagerRefHook(handler).getSoundSystem();
 
-            PositionedAudioPlayer pp = new PositionedAudioPlayer(logger, system, seekTracker);
-
-            OnlineAudioPlayer.mkdirs();
-            IVideoDownloader downloader = new YoutubeDlVideoDownloader(logger);
-            downloader.prepareEnvironment(new File("tubediscs"));
-            audio = new OnlineAudioPlayer(logger, downloader, pp);
+            audio = new PositionedAudioPlayer(logger, system);
 
             // Stops music on disconnect
             MinecraftForge.EVENT_BUS.register(new ClientJukeboxHandler(audio));

@@ -7,9 +7,6 @@ import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
 import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
 
-import java.net.MalformedURLException;
-import java.net.URL;
-
 public class TubePlayMessage implements IMessage {
     private BlockPos pos;
     private int offset;
@@ -59,16 +56,13 @@ public class TubePlayMessage implements IMessage {
         @Override
         public IMessage onMessage(TubePlayMessage message, MessageContext ctx) {
             TubeDiscs mod = TubeDiscs.getInstance();
-            try {
-                URL url = new URL(message.url);
-                BlockPos pos = message.pos;
-                int offset = message.offset;
 
-                mod.getLogger().info("Requested playback of " + url + " at " + pos.toString() + " with offset " + offset);
-                mod.getAudio().playVideoAtPos(url, pos, offset);
-            } catch (MalformedURLException e) {
-                mod.getLogger().error(e);
-            }
+            String url = message.url;
+            BlockPos pos = message.pos;
+            int offset = message.offset;
+
+            mod.getLogger().info("Requested playback of " + url + " at " + pos.toString() + " with offset " + offset);
+            mod.getAudio().playAudioAtPos(url, pos, offset);
             return null;
         }
     }
