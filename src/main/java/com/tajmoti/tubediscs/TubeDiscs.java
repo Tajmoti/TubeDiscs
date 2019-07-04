@@ -5,6 +5,7 @@ import com.tajmoti.tubediscs.audio.client.PositionedAudioPlayer;
 import com.tajmoti.tubediscs.audio.client.SoundManagerRefHook;
 import com.tajmoti.tubediscs.audio.server.TimedAudioRequest;
 import com.tajmoti.tubediscs.event.ClientJukeboxHandler;
+import com.tajmoti.tubediscs.event.ClientSoundSystemHandler;
 import com.tajmoti.tubediscs.event.RegistryHandler;
 import com.tajmoti.tubediscs.event.ServerJukeboxHandler;
 import com.tajmoti.tubediscs.gui.GuiHandler;
@@ -58,6 +59,11 @@ public class TubeDiscs {
         logger = event.getModLog();
         network = NetworkRegistry.INSTANCE.newSimpleChannel(ModInfo.MODID);
         serverTracker = new AudioTracker<>(logger);
+
+        // Registers a custom version of the OpenAL library with a bug fixed
+        if (event.getSide() == Side.CLIENT)
+            MinecraftForge.EVENT_BUS.register(new ClientSoundSystemHandler());
+
         MinecraftForge.EVENT_BUS.register(new RegistryHandler(logger, network, serverTracker));
     }
 
