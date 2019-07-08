@@ -28,19 +28,7 @@ public class PositionedAudioPlayer implements ITickable {
     @GuardedBy("tracker")
     private final AudioTracker<ActiveRequest> tracker;
     private final IAudioProvider player;
-    private final IAudioProvider.Callback callback = new IAudioProvider.Callback() {
-        @Override
-        public void feedBytes(ActiveRequest request, byte[] buffer) {
-            if (!request.isCanceled)
-                soundSystem.feedRawAudioData(request.sourcename, buffer);
-        }
 
-        @Override
-        public void notifyFailed(ActiveRequest request) {
-            request.isCanceled = true;
-            stopAudioAtPosIfValid(request.dimen, request.pos, request.sourcename);
-        }
-    };
 
     public PositionedAudioPlayer(Logger logger, Minecraft minecraft, SoundSystem ss) {
         this.logger = logger;
@@ -63,9 +51,9 @@ public class PositionedAudioPlayer implements ITickable {
         soundSystem.rawDataStream(IAudioProvider.MC_AUDIO_FORMAT, false, sourcename,
                 request.pos.getX(), request.pos.getY(), request.pos.getZ(), attType, distOrRoll);
         logger.info("Submitting SoundSystem request to play " + request.toString());
-        ActiveRequest active = new ActiveRequest(request, sourcename, System.currentTimeMillis());
+        ActiveRequest active = new ActiveRequest(request, sourcename, System.currentTimeMillis(), worldTime);
         // Fill the buffers and play
-        player.fetchAndPlayAsync(active, worldTime, callback);
+        player.fetchAndPlayAsync(active);
 
         // Track the sound
         synchronized (tracker) {
@@ -150,6 +138,99 @@ public class PositionedAudioPlayer implements ITickable {
                     soundSystem.setVolume(r.sourcename, 0.0f);
                 }
             }
+        }
+    }
+
+    public class ActiveRequest extends TimedAudioRequest {
+        /**
+         * The {@link SoundSystem} sourcename.
+         */
+        private final String sourcename;
+        /**
+         * The time in RTC when the client has received the request to start playing this track.
+         * Can be well after the track has started playing on the server.
+         * {@link System#currentTimeMillis()}.
+         */
+        private final long timeStarted;
+        /**
+         * The number of server ticks when the server sent a request
+         * to this client to start the track.
+         */
+        private long ticksNow;
+        /**
+         * The duration of the track in ms,
+         * or -1 if not yet known.
+         */
+        public volatile long duration;
+        /**
+         * If set to true, the playing should stop.
+         */
+        private volatile boolean isCanceled;
+        /**
+         * How many bytes, including the skipped ones,
+         * have been fed into this request.
+         */
+        private int processedBytes;
+
+
+        private ActiveRequest(TimedAudioRequest request, String sourcename, long timeStarted, long ticksNow) {
+            super(request.dimen, request.pos, request.url, request.ticksStarted);
+            this.sourcename = sourcename;
+            this.timeStarted = timeStarted;
+            this.duration = -1;
+            this.ticksNow = ticksNow;
+        }
+
+        @Override
+        public String toString() {
+            return "ActiveRequest{" +
+                    "url='" + url + '\'' +
+                    ", dimen=" + dimen +
+                    ", pos=" + pos +
+                    ", sourcename='" + sourcename + '\'' +
+                    '}';
+        }
+
+        /**
+         * Consumes the bytes and if we did not yet reach the seek point,
+         * trims the required bytes to seek to the right point.
+         * If we do not yet have enough bytes, the buffer might be skipped entirely.
+         * <p>
+         * Returns true if we need more bytes, false if bytes will no longer be accepted.
+         */
+        public boolean trimAndFeedBytes(byte[] buffer) {
+            if (isCanceled)
+                return false;
+
+            // Calculate the offset
+            long skipTicks = ticksNow - ticksStarted;
+            long skipMillis = (skipTicks / 20) * 1000 + (System.currentTimeMillis() - timeStarted);
+            int skipBytes = IAudioProvider.millisToBytes(skipMillis);
+            int receivedBytes = buffer.length;
+            if (processedBytes > skipBytes) {
+                // We are already behind the cut-off point, continue loading normally
+                feedBytes(buffer);
+            } else if (skipBytes <= (receivedBytes + processedBytes)) {
+                // This portion contains the cut-off point
+                skipBytes = skipBytes - processedBytes;
+
+                int portionLength = receivedBytes - skipBytes;
+                byte[] portion = new byte[portionLength];
+                System.arraycopy(buffer, skipBytes, portion, 0, portionLength);
+
+                feedBytes(portion);
+            }
+            processedBytes += receivedBytes;
+            return true;
+        }
+
+        private void feedBytes(byte[] buffer) {
+            soundSystem.feedRawAudioData(sourcename, buffer);
+        }
+
+        public void notifyFailed() {
+            isCanceled = true;
+            stopAudioAtPosIfValid(dimen, pos, sourcename);
         }
     }
 }

@@ -7,11 +7,11 @@ public interface IAudioProvider {
 
 
     /**
-     * Asynchronously loads the track identified by {@link ActiveRequest}
-     * and pushes the loaded bytes into {@link Callback#feedBytes(ActiveRequest, byte[])}.
-     * If an error occurs, calls {@link Callback#notifyFailed(ActiveRequest)}.
+     * Asynchronously loads the track identified by {@link PositionedAudioPlayer.ActiveRequest}
+     * and pushes the loaded bytes into {@link PositionedAudioPlayer.ActiveRequest#trimAndFeedBytes(byte[])}.
+     * If an error occurs, calls {@link PositionedAudioPlayer.ActiveRequest#notifyFailed()}.
      */
-    void fetchAndPlayAsync(ActiveRequest request, long serverTicks, Callback callback);
+    void fetchAndPlayAsync(PositionedAudioPlayer.ActiveRequest request);
 
 
     /**
@@ -23,11 +23,5 @@ public interface IAudioProvider {
         float totalOffsetBytes = (totalOffsetMillis * MC_AUDIO_FORMAT.getFrameRate() / 1000) * frameSize;
         // Offset must be multiple of a frame!
         return (int) totalOffsetBytes / frameSize * frameSize;
-    }
-
-    interface Callback {
-        void feedBytes(ActiveRequest request, byte[] buffer);
-
-        void notifyFailed(ActiveRequest request);
     }
 }
