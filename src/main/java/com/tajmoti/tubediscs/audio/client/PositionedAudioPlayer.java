@@ -1,19 +1,12 @@
 package com.tajmoti.tubediscs.audio.client;
 
 import com.sedmelluq.discord.lavaplayer.format.StandardAudioDataFormats;
-import com.sedmelluq.discord.lavaplayer.player.AudioLoadResultHandler;
-import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
-import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
-import com.sedmelluq.discord.lavaplayer.player.DefaultAudioPlayerManager;
-import com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager;
-import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
-import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
-import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
-import com.sedmelluq.discord.lavaplayer.track.playback.AudioFrame;
 import com.tajmoti.tubediscs.audio.AudioTracker;
+import com.tajmoti.tubediscs.audio.client.impl.LavaPlayerAudioProvider;
 import com.tajmoti.tubediscs.audio.server.TimedAudioRequest;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.ISound;
+import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.util.ITickable;
 import net.minecraft.util.SoundCategory;
 import net.minecraft.util.math.BlockPos;
@@ -23,33 +16,38 @@ import org.apache.logging.log4j.Logger;
 import paulscode.sound.SoundSystem;
 
 import javax.annotation.concurrent.GuardedBy;
-import javax.sound.sampled.AudioFormat;
 import java.util.Iterator;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 @SideOnly(Side.CLIENT)
 public class PositionedAudioPlayer implements ITickable {
     private final Logger logger;
+    private final Minecraft mc;
     private final SoundSystem soundSystem;
+
     @GuardedBy("tracker")
     private final AudioTracker<ActiveRequest> tracker;
+    private final IAudioProvider player;
+    private final IAudioProvider.Callback callback = new IAudioProvider.Callback() {
+        @Override
+        public void feedBytes(ActiveRequest request, byte[] buffer) {
+            if (!request.isCanceled)
+                soundSystem.feedRawAudioData(request.sourcename, buffer);
+        }
 
-    private final AudioFormat mcAudioFormat;
-    private final AudioPlayerManager manager;
+        @Override
+        public void notifyFailed(ActiveRequest request) {
+            request.isCanceled = true;
+            stopAudioAtPosIfValid(request.dimen, request.pos, request.sourcename);
+        }
+    };
 
-
-    public PositionedAudioPlayer(Logger logger, SoundSystem ss) {
-        super();
+    public PositionedAudioPlayer(Logger logger, Minecraft minecraft, SoundSystem ss) {
         this.logger = logger;
+        this.mc = minecraft;
         this.soundSystem = ss;
         this.tracker = new AudioTracker<>(logger);
-        this.mcAudioFormat = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 44100f, 16, 2, 4, 44100f, false);
-        this.manager = new DefaultAudioPlayerManager();
-        this.manager.getConfiguration().setOutputFormat(StandardAudioDataFormats.COMMON_PCM_S16_LE);
-        this.manager.registerSourceManager(new YoutubeAudioSourceManager());
-        this.manager.setUseSeekGhosting(false);
+        this.player = new LavaPlayerAudioProvider(logger, StandardAudioDataFormats.COMMON_PCM_S16_LE);
     }
 
 
@@ -62,11 +60,12 @@ public class PositionedAudioPlayer implements ITickable {
         int attType = ISound.AttenuationType.LINEAR.getTypeInt();
 
         float distOrRoll = 16.0F * 4.0F;
-        soundSystem.rawDataStream(mcAudioFormat, false, sourcename, request.pos.getX(), request.pos.getY(), request.pos.getZ(), attType, distOrRoll);
+        soundSystem.rawDataStream(IAudioProvider.MC_AUDIO_FORMAT, false, sourcename,
+                request.pos.getX(), request.pos.getY(), request.pos.getZ(), attType, distOrRoll);
         logger.info("Submitting SoundSystem request to play " + request.toString());
         ActiveRequest active = new ActiveRequest(request, sourcename, System.currentTimeMillis());
         // Fill the buffers and play
-        loadPlayFillBuffers(active, sourcename, worldTime);
+        player.fetchAndPlayAsync(active, worldTime, callback);
 
         // Track the sound
         synchronized (tracker) {
@@ -112,109 +111,34 @@ public class PositionedAudioPlayer implements ITickable {
 
     @Override
     public void update() {
+        EntityPlayerSP player = mc.player;
+        if (player == null) return;
+
+        int dimension = player.dimension;
         synchronized (tracker) {
             // The current volume
-            float volume = Minecraft.getMinecraft().gameSettings.getSoundLevel(SoundCategory.RECORDS);
+            float volume = mc.gameSettings.getSoundLevel(SoundCategory.RECORDS);
             // The current time
             long now = System.currentTimeMillis();
 
             Iterator<ActiveRequest> it = tracker.getAllSounds().iterator();
             while (it.hasNext()) {
                 ActiveRequest r = it.next();
-                if (r.duration == -1) {
-                    soundSystem.setVolume(r.sourcename, volume);
-                } else if (now > (r.timeStarted + r.duration)) {
+
+                // If already over, remove it
+                if (r.duration != -1 && now > (r.timeStarted + r.duration)) {
                     soundSystem.removeSource(r.sourcename);
                     it.remove();
-                } else {
+                    continue;
+                }
+
+                // If we are in the dimension,
+                if (r.dimen == dimension) {
                     soundSystem.setVolume(r.sourcename, volume);
+                } else {
+                    soundSystem.setVolume(r.sourcename, 0.0f);
                 }
             }
         }
-    }
-
-
-    private void loadPlayFillBuffers(ActiveRequest request, String sourcename, long worldTicksNow) {
-        long loadingStart = System.currentTimeMillis();
-        manager.loadItem(request.url, new AudioLoadResultHandler() {
-            @Override
-            public void trackLoaded(AudioTrack track) {
-                fillBuffers(request, track, worldTicksNow, System.currentTimeMillis() - loadingStart);
-                request.duration = track.getDuration();
-            }
-
-            @Override
-            public void playlistLoaded(AudioPlaylist playlist) {
-                logger.warn("playlistLoaded()");
-                stopAudioAtPosIfValid(request.dimen, request.pos, sourcename);
-            }
-
-            @Override
-            public void noMatches() {
-                logger.warn("noMatches()");
-                stopAudioAtPosIfValid(request.dimen, request.pos, sourcename);
-            }
-
-            @Override
-            public void loadFailed(FriendlyException exception) {
-                logger.warn("loadFailed()");
-                stopAudioAtPosIfValid(request.dimen, request.pos, sourcename);
-            }
-        });
-    }
-
-    private void fillBuffers(ActiveRequest request, AudioTrack track, long ticksNow, long millisWastedLoading) {
-        AudioPlayer player = manager.createPlayer();
-        player.playTrack(track);
-
-        int processedBytes = 0;
-        AudioFrame frame;
-        while (true) {
-            // Load the next frame or quit the loop on no data
-            try {
-                frame = player.provide(8, TimeUnit.SECONDS);
-                if (frame == null || frame.isTerminator())
-                    break;
-            } catch (TimeoutException | InterruptedException e) {
-                logger.warn(e);
-                break;
-            }
-            // Clear up any queued commands
-            soundSystem.CommandQueue(null);
-            // Check if the sound should still be playing
-            synchronized (PositionedAudioPlayer.this) {
-                ActiveRequest fromList = tracker.findExistingRequest(request.dimen, request.pos);
-                if (fromList == null || !fromList.sourcename.equals(request.sourcename)) {
-                    logger.warn("Playing of {} canceled, breaking from feed loop", request);
-                    player.destroy();
-                    break;
-                }
-            }
-            long skipTicks = ticksNow - request.ticksStarted;
-            long skipMillis = (skipTicks / 20) * 1000 + millisWastedLoading;
-            int skipBytes = millisToBytes(skipMillis);
-            int receivedBytes = frame.getDataLength();
-            if (processedBytes > skipBytes) {
-                // We are already behind the cut-off point, continue loading normally
-                soundSystem.feedRawAudioData(request.sourcename, frame.getData());
-            } else if (skipBytes <= (receivedBytes + processedBytes)) {
-                // This portion contains the cut-off point
-                skipBytes = skipBytes - processedBytes;
-
-                int portionLength = receivedBytes - skipBytes;
-                byte[] portion = new byte[portionLength];
-                System.arraycopy(frame.getData(), skipBytes, portion, 0, portionLength);
-
-                soundSystem.feedRawAudioData(request.sourcename, portion);
-            }
-            processedBytes += receivedBytes;
-        }
-    }
-
-    private int millisToBytes(long totalOffsetMillis) {
-        int frameSize = mcAudioFormat.getFrameSize();
-        float totalOffsetBytes = (totalOffsetMillis * mcAudioFormat.getFrameRate() / 1000) * frameSize;
-        // Offset must be multiple of a frame!
-        return (int) totalOffsetBytes / frameSize * frameSize;
     }
 }

@@ -83,7 +83,7 @@ public class TubeDiscs {
             SoundHandler handler = Minecraft.getMinecraft().getSoundHandler();
             SoundSystem system = new SoundManagerRefHook(logger, handler).getSoundSystem();
 
-            audio = new PositionedAudioPlayer(logger, system);
+            audio = new PositionedAudioPlayer(logger, Minecraft.getMinecraft(), system);
 
             // Stops music on disconnect
             MinecraftForge.EVENT_BUS.register(new ClientJukeboxHandler(audio));

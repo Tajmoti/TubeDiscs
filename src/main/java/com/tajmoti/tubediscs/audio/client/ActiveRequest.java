@@ -18,6 +18,11 @@ public class ActiveRequest extends TimedAudioRequest {
      */
     public volatile long duration;
 
+    /**
+     * If set to true, the playing should stop.
+     */
+    public volatile boolean isCanceled;
+
 
     public ActiveRequest(TimedAudioRequest request, String sourcename, long timeStarted) {
         super(request.dimen, request.pos, request.url, request.ticksStarted);
