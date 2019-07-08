@@ -16,11 +16,14 @@ import org.apache.logging.log4j.Logger;
 import paulscode.sound.SoundSystem;
 
 import javax.annotation.concurrent.GuardedBy;
+import javax.sound.sampled.AudioFormat;
 import java.util.Iterator;
 import java.util.UUID;
 
 @SideOnly(Side.CLIENT)
 public class PositionedAudioPlayer implements ITickable {
+    private static final AudioFormat MC_AUDIO_FORMAT = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 44100, 16, 2, 4, 44100, false);
+
     private final Logger logger;
     private final Minecraft mc;
     private final SoundSystem soundSystem;
@@ -48,7 +51,7 @@ public class PositionedAudioPlayer implements ITickable {
         int attType = ISound.AttenuationType.LINEAR.getTypeInt();
 
         float distOrRoll = 16.0F * 4.0F;
-        soundSystem.rawDataStream(IAudioProvider.MC_AUDIO_FORMAT, false, sourcename,
+        soundSystem.rawDataStream(MC_AUDIO_FORMAT, false, sourcename,
                 request.pos.getX(), request.pos.getY(), request.pos.getZ(), attType, distOrRoll);
         logger.info("Submitting SoundSystem request to play " + request.toString());
         ActiveRequest active = new ActiveRequest(request, sourcename, System.currentTimeMillis(), worldTime);
@@ -205,7 +208,7 @@ public class PositionedAudioPlayer implements ITickable {
             // Calculate the offset
             long skipTicks = ticksNow - ticksStarted;
             long skipMillis = (skipTicks / 20) * 1000 + (System.currentTimeMillis() - timeStarted);
-            int skipBytes = IAudioProvider.millisToBytes(skipMillis);
+            int skipBytes = millisToBytes(skipMillis);
             int receivedBytes = buffer.length;
             if (processedBytes > skipBytes) {
                 // We are already behind the cut-off point, continue loading normally
@@ -232,5 +235,16 @@ public class PositionedAudioPlayer implements ITickable {
             isCanceled = true;
             stopAudioAtPosIfValid(dimen, pos, sourcename);
         }
+    }
+
+    /**
+     * Calculates the byte offset into the PCM sound
+     * from the milliseconds to skip.
+     */
+    private static int millisToBytes(long totalOffsetMillis) {
+        int frameSize = MC_AUDIO_FORMAT.getFrameSize();
+        float totalOffsetBytes = (totalOffsetMillis * MC_AUDIO_FORMAT.getFrameRate() / 1000) * frameSize;
+        // Offset must be multiple of a frame!
+        return (int) totalOffsetBytes / frameSize * frameSize;
     }
 }
