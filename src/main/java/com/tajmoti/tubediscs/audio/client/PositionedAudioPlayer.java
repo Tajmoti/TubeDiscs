@@ -159,7 +159,7 @@ public class PositionedAudioPlayer implements ITickable {
          * The number of server ticks when the server sent a request
          * to this client to start the track.
          */
-        private long ticksNow;
+        private final long ticksNow;
         /**
          * The duration of the track in ms,
          * or -1 if not yet known.
@@ -180,18 +180,10 @@ public class PositionedAudioPlayer implements ITickable {
             super(request.dimen, request.pos, request.url, request.ticksStarted);
             this.sourcename = sourcename;
             this.timeStarted = timeStarted;
-            this.duration = -1;
             this.ticksNow = ticksNow;
-        }
-
-        @Override
-        public String toString() {
-            return "ActiveRequest{" +
-                    "url='" + url + '\'' +
-                    ", dimen=" + dimen +
-                    ", pos=" + pos +
-                    ", sourcename='" + sourcename + '\'' +
-                    '}';
+            this.duration = -1;
+            this.isCanceled = false;
+            this.processedBytes = 0;
         }
 
         /**
