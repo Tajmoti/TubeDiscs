@@ -46,7 +46,7 @@ public class PositionedAudioPlayer implements ITickable {
         this.logger = logger;
         this.mc = minecraft;
         this.soundSystem = ss;
-        this.tracker = new AudioTracker<>(logger);
+        this.tracker = new AudioTracker<>();
         this.player = new LavaPlayerAudioProvider(logger, StandardAudioDataFormats.COMMON_PCM_S16_LE);
     }
 
@@ -79,8 +79,12 @@ public class PositionedAudioPlayer implements ITickable {
             activeRequest = tracker.removeSoundAtPos(dimen, pos);
         }
         if (activeRequest != null) {
+            activeRequest.isCanceled = true;
             soundSystem.stop(activeRequest.sourcename);
             soundSystem.removeSource(activeRequest.sourcename);
+            logger.warn("{} {} stopped stopAudioAtPos()", dimen, pos.toString());
+        } else {
+            logger.warn("{} {} not found in stopAudioAtPos()", dimen, pos.toString());
         }
     }
 
@@ -90,19 +94,24 @@ public class PositionedAudioPlayer implements ITickable {
             activeRequest = tracker.findExistingRequest(dimen, pos);
         }
         if (activeRequest != null && activeRequest.isMatchingRequest(dimen, pos) && activeRequest.sourcename.equals(sourcename)) {
-            soundSystem.stop(sourcename);
+            activeRequest.isCanceled = true;
+            soundSystem.stop(activeRequest.sourcename);
             soundSystem.removeSource(sourcename);
             synchronized (tracker) {
                 tracker.removeSound(activeRequest);
             }
+        } else {
+            logger.warn("{} {} {} not found in stopAudioAtPosIfValid()", dimen, pos.toString(), sourcename);
         }
     }
 
     public void stopAllAudio() {
         synchronized (tracker) {
             for (ActiveRequest request : tracker.getAllSounds()) {
+                request.isCanceled = true;
                 soundSystem.stop(request.sourcename);
                 soundSystem.removeSource(request.sourcename);
+                logger.info("{} removed in stopAllAudio()", request.sourcename);
             }
             tracker.removeAllSounds();
         }
@@ -127,6 +136,8 @@ public class PositionedAudioPlayer implements ITickable {
 
                 // If already over, remove it
                 if (r.duration != -1 && now > (r.timeStarted + r.duration)) {
+                    logger.info("{} is over, removing it", r.sourcename);
+                    soundSystem.stop(r.sourcename);
                     soundSystem.removeSource(r.sourcename);
                     it.remove();
                     continue;

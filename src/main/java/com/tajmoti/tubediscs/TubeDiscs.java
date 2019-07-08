@@ -58,7 +58,7 @@ public class TubeDiscs {
     public void preInit(FMLPreInitializationEvent event) {
         logger = event.getModLog();
         network = NetworkRegistry.INSTANCE.newSimpleChannel(ModInfo.MODID);
-        serverTracker = new AudioTracker<>(logger);
+        serverTracker = new AudioTracker<>();
 
         // Registers a custom version of the OpenAL library with a bug fixed
         if (event.getSide() == Side.CLIENT)

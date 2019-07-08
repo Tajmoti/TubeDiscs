@@ -1,7 +1,6 @@
 package com.tajmoti.tubediscs.audio;
 
 import net.minecraft.util.math.BlockPos;
-import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -10,7 +9,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class AudioTracker<R extends AudioRequest> {
-    private Logger logger;
     /**
      * What sound is played where. Added on playback start,
      * removed when the playback is canceled.
@@ -18,8 +16,7 @@ public class AudioTracker<R extends AudioRequest> {
     private final List<R> playingSounds;
 
 
-    public AudioTracker(Logger logger) {
-        this.logger = logger;
+    public AudioTracker() {
         this.playingSounds = new ArrayList<>();
     }
 
@@ -35,15 +32,12 @@ public class AudioTracker<R extends AudioRequest> {
     @Nullable
     public R removeSoundAtPos(int dimen, @Nonnull BlockPos pos) {
         R audio = findExistingRequest(dimen, pos);
-        if (audio != null) {
-            logger.info("Stopping audio at pos " + pos.toString());
+        if (audio != null)
             playingSounds.remove(audio);
-        }
         return audio;
     }
 
     public void removeAllSounds() {
-        logger.info("Stopping all audio");
         playingSounds.clear();
     }
 
