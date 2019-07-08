@@ -14,6 +14,7 @@ import com.tajmoti.tubediscs.audio.AudioTracker;
 import com.tajmoti.tubediscs.audio.server.TimedAudioRequest;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.ISound;
+import net.minecraft.util.ITickable;
 import net.minecraft.util.SoundCategory;
 import net.minecraft.util.math.BlockPos;
 import net.minecraftforge.fml.relauncher.Side;
@@ -21,15 +22,18 @@ import net.minecraftforge.fml.relauncher.SideOnly;
 import org.apache.logging.log4j.Logger;
 import paulscode.sound.SoundSystem;
 
+import javax.annotation.concurrent.GuardedBy;
 import javax.sound.sampled.AudioFormat;
+import java.util.Iterator;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 @SideOnly(Side.CLIENT)
-public class PositionedAudioPlayer {
+public class PositionedAudioPlayer implements ITickable {
     private final Logger logger;
     private final SoundSystem soundSystem;
+    @GuardedBy("tracker")
     private final AudioTracker<ActiveRequest> tracker;
 
     private final AudioFormat mcAudioFormat;
@@ -48,7 +52,8 @@ public class PositionedAudioPlayer {
         this.manager.setUseSeekGhosting(false);
     }
 
-    public synchronized void playAudioAtPos(TimedAudioRequest request, long worldTime) {
+
+    public void playAudioAtPos(TimedAudioRequest request, long worldTime) {
         // Stop the old audio play at the position
         stopAudioAtPos(request.dimen, request.pos);
 
@@ -56,39 +61,78 @@ public class PositionedAudioPlayer {
         String sourcename = UUID.randomUUID().toString();
         int attType = ISound.AttenuationType.LINEAR.getTypeInt();
 
-        float distOrRoll = 16.0F;
+        float distOrRoll = 16.0F * 4.0F;
         soundSystem.rawDataStream(mcAudioFormat, false, sourcename, request.pos.getX(), request.pos.getY(), request.pos.getZ(), attType, distOrRoll);
         logger.info("Submitting SoundSystem request to play " + request.toString());
-        ActiveRequest active = new ActiveRequest(request, sourcename);
+        ActiveRequest active = new ActiveRequest(request, sourcename, System.currentTimeMillis());
         // Fill the buffers and play
         loadPlayFillBuffers(active, sourcename, worldTime);
-        tracker.addSound(active);
+
+        // Track the sound
+        synchronized (tracker) {
+            tracker.addSound(active);
+        }
     }
 
-    public synchronized void stopAudioAtPos(int dimen, BlockPos pos) {
-        ActiveRequest activeRequest = tracker.removeSoundAtPos(dimen, pos);
+    public void stopAudioAtPos(int dimen, BlockPos pos) {
+        ActiveRequest activeRequest;
+        synchronized (tracker) {
+            activeRequest = tracker.removeSoundAtPos(dimen, pos);
+        }
         if (activeRequest != null) {
             soundSystem.stop(activeRequest.sourcename);
             soundSystem.removeSource(activeRequest.sourcename);
         }
     }
 
-    private synchronized void stopAudioAtPosIfValid(int dimen, BlockPos pos, String sourcename) {
-        ActiveRequest activeRequest = tracker.findExistingRequest(dimen, pos);
+    private void stopAudioAtPosIfValid(int dimen, BlockPos pos, String sourcename) {
+        ActiveRequest activeRequest;
+        synchronized (tracker) {
+            activeRequest = tracker.findExistingRequest(dimen, pos);
+        }
         if (activeRequest != null && activeRequest.isMatchingRequest(dimen, pos) && activeRequest.sourcename.equals(sourcename)) {
             soundSystem.stop(sourcename);
             soundSystem.removeSource(sourcename);
-            tracker.removeSound(activeRequest);
+            synchronized (tracker) {
+                tracker.removeSound(activeRequest);
+            }
         }
     }
 
     public void stopAllAudio() {
-        for (ActiveRequest request : tracker.getAllSounds()) {
-            soundSystem.stop(request.sourcename);
-            soundSystem.removeSource(request.sourcename);
+        synchronized (tracker) {
+            for (ActiveRequest request : tracker.getAllSounds()) {
+                soundSystem.stop(request.sourcename);
+                soundSystem.removeSource(request.sourcename);
+            }
+            tracker.removeAllSounds();
         }
-        tracker.removeAllSounds();
     }
+
+
+    @Override
+    public void update() {
+        synchronized (tracker) {
+            // The current volume
+            float volume = Minecraft.getMinecraft().gameSettings.getSoundLevel(SoundCategory.RECORDS);
+            // The current time
+            long now = System.currentTimeMillis();
+
+            Iterator<ActiveRequest> it = tracker.getAllSounds().iterator();
+            while (it.hasNext()) {
+                ActiveRequest r = it.next();
+                if (r.duration == -1) {
+                    soundSystem.setVolume(r.sourcename, volume);
+                } else if (now > (r.timeStarted + r.duration)) {
+                    soundSystem.removeSource(r.sourcename);
+                    it.remove();
+                } else {
+                    soundSystem.setVolume(r.sourcename, volume);
+                }
+            }
+        }
+    }
+
 
     private void loadPlayFillBuffers(ActiveRequest request, String sourcename, long worldTicksNow) {
         long loadingStart = System.currentTimeMillis();
@@ -96,6 +140,7 @@ public class PositionedAudioPlayer {
             @Override
             public void trackLoaded(AudioTrack track) {
                 fillBuffers(request, track, worldTicksNow, System.currentTimeMillis() - loadingStart);
+                request.duration = track.getDuration();
             }
 
             @Override
@@ -120,7 +165,6 @@ public class PositionedAudioPlayer {
 
     private void fillBuffers(ActiveRequest request, AudioTrack track, long ticksNow, long millisWastedLoading) {
         AudioPlayer player = manager.createPlayer();
-        player.setVolume((int) (Minecraft.getMinecraft().gameSettings.getSoundLevel(SoundCategory.RECORDS) * 100.0f));
         player.playTrack(track);
 
         int processedBytes = 0;
@@ -146,7 +190,7 @@ public class PositionedAudioPlayer {
                     break;
                 }
             }
-            long skipTicks = ticksNow - request.timeStarted;
+            long skipTicks = ticksNow - request.ticksStarted;
             long skipMillis = (skipTicks / 20) * 1000 + millisWastedLoading;
             int skipBytes = millisToBytes(skipMillis);
             int receivedBytes = frame.getDataLength();

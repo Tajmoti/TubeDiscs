@@ -3,6 +3,7 @@ package com.tajmoti.tubediscs.net;
 import com.tajmoti.tubediscs.TubeDiscs;
 import com.tajmoti.tubediscs.audio.server.TimedAudioRequest;
 import io.netty.buffer.ByteBuf;
+import net.minecraft.client.Minecraft;
 import net.minecraft.util.math.BlockPos;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
@@ -56,7 +57,7 @@ public class TubePlayMessage implements IMessage {
         buf.writeDouble(request.pos.getX());
         buf.writeDouble(request.pos.getY());
         buf.writeDouble(request.pos.getZ());
-        buf.writeLong(request.timeStarted);
+        buf.writeLong(request.ticksStarted);
         buf.writeLong(serverTime);
         buf.writeBytes(request.url.getBytes());
     }
@@ -67,6 +68,9 @@ public class TubePlayMessage implements IMessage {
         public IMessage onMessage(TubePlayMessage message, MessageContext ctx) {
             TubeDiscs mod = TubeDiscs.getInstance();
             mod.getAudio().playAudioAtPos(message.request, message.serverTime);
+
+            String displayMsg = "Now playing " + message.request.url + " with offset " + (message.serverTime - message.request.ticksStarted) + " ticks";
+            Minecraft.getMinecraft().ingameGUI.setOverlayMessage(displayMsg, true);
             return null;
         }
     }
