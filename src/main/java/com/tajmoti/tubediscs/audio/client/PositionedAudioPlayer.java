@@ -70,7 +70,7 @@ public class PositionedAudioPlayer implements ITickable {
             activeRequest = tracker.removeSoundAtPos(dimen, pos);
         }
         if (activeRequest != null) {
-            activeRequest.isCanceled = true;
+            activeRequest.isStopped = true;
             soundSystem.stop(activeRequest.sourcename);
             soundSystem.removeSource(activeRequest.sourcename);
             logger.warn("{} {} stopped stopAudioAtPos()", dimen, pos.toString());
@@ -85,7 +85,7 @@ public class PositionedAudioPlayer implements ITickable {
             activeRequest = tracker.findExistingRequest(dimen, pos);
         }
         if (activeRequest != null && activeRequest.isMatchingRequest(dimen, pos) && activeRequest.sourcename.equals(sourcename)) {
-            activeRequest.isCanceled = true;
+            activeRequest.isStopped = true;
             soundSystem.stop(activeRequest.sourcename);
             soundSystem.removeSource(sourcename);
             synchronized (tracker) {
@@ -99,7 +99,7 @@ public class PositionedAudioPlayer implements ITickable {
     public void stopAllAudio() {
         synchronized (tracker) {
             for (ActiveRequest request : tracker.getAllSounds()) {
-                request.isCanceled = true;
+                request.isStopped = true;
                 soundSystem.stop(request.sourcename);
                 soundSystem.removeSource(request.sourcename);
                 logger.info("{} removed in stopAllAudio()", request.sourcename);
@@ -128,14 +128,11 @@ public class PositionedAudioPlayer implements ITickable {
                 // If already over, remove it
                 if (r.duration != -1 && now > (r.timeStarted + r.duration)) {
                     logger.info("{} is over, removing it", r.sourcename);
+                    r.isStopped = true;
                     soundSystem.stop(r.sourcename);
                     soundSystem.removeSource(r.sourcename);
                     it.remove();
-                    continue;
-                }
-
-                // If we are in the dimension,
-                if (r.dimen == dimension) {
+                } else if (r.dimen == dimension) {
                     soundSystem.setVolume(r.sourcename, volume);
                 } else {
                     soundSystem.setVolume(r.sourcename, 0.0f);
@@ -166,9 +163,10 @@ public class PositionedAudioPlayer implements ITickable {
          */
         public volatile long duration;
         /**
-         * If set to true, the playing should stop.
+         * If set to true, the playing has stopped,
+         * either because the track is over or it was canceled.
          */
-        private volatile boolean isCanceled;
+        private volatile boolean isStopped;
         /**
          * How many bytes, including the skipped ones,
          * have been fed into this request.
@@ -182,7 +180,7 @@ public class PositionedAudioPlayer implements ITickable {
             this.timeStarted = timeStarted;
             this.ticksNow = ticksNow;
             this.duration = -1;
-            this.isCanceled = false;
+            this.isStopped = false;
             this.processedBytes = 0;
         }
 
@@ -194,7 +192,7 @@ public class PositionedAudioPlayer implements ITickable {
          * Returns true if we need more bytes, false if bytes will no longer be accepted.
          */
         public boolean trimAndFeedBytes(byte[] buffer) {
-            if (isCanceled)
+            if (isStopped)
                 return false;
 
             // Calculate the offset
@@ -224,7 +222,7 @@ public class PositionedAudioPlayer implements ITickable {
         }
 
         public void notifyFailed() {
-            isCanceled = true;
+            isStopped = true;
             stopAudioAtPosIfValid(dimen, pos, sourcename);
         }
     }
