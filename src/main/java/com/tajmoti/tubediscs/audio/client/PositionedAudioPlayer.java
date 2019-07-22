@@ -5,7 +5,6 @@ import com.tajmoti.tubediscs.audio.AudioTracker;
 import com.tajmoti.tubediscs.audio.client.impl.LavaPlayerAudioProvider;
 import com.tajmoti.tubediscs.audio.server.TimedAudioRequest;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.audio.ISound;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.util.ITickable;
 import net.minecraft.util.SoundCategory;
@@ -14,6 +13,7 @@ import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import org.apache.logging.log4j.Logger;
 import paulscode.sound.SoundSystem;
+import paulscode.sound.SoundSystemConfig;
 
 import javax.annotation.concurrent.GuardedBy;
 import javax.sound.sampled.AudioFormat;
@@ -22,7 +22,8 @@ import java.util.UUID;
 
 @SideOnly(Side.CLIENT)
 public class PositionedAudioPlayer implements ITickable {
-    private static final AudioFormat MC_AUDIO_FORMAT = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 44100, 16, 2, 4, 44100, false);
+    private static final AudioFormat FORMAT_IN = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 44100, 16, 2, 4, 44100, false);
+    private static final AudioFormat FORMAT_OUT = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, 44100, 16, 1, 2, 44100, false);
 
     private final Logger logger;
     private final Minecraft mc;
@@ -47,21 +48,26 @@ public class PositionedAudioPlayer implements ITickable {
         stopAudioAtPos(request.dimen, request.pos);
 
         // Sound parameters
-        String sourcename = UUID.randomUUID().toString();
-        int attType = ISound.AttenuationType.LINEAR.getTypeInt();
-
-        float distOrRoll = 16.0F * 4.0F;
-        soundSystem.rawDataStream(MC_AUDIO_FORMAT, false, sourcename,
-                request.pos.getX(), request.pos.getY(), request.pos.getZ(), attType, distOrRoll);
-        logger.info("Submitting SoundSystem request to play " + request.toString());
-        ActiveRequest active = new ActiveRequest(request, sourcename, System.currentTimeMillis(), worldTime);
-        // Fill the buffers and play
-        player.fetchAndPlayAsync(active);
-
+        ActiveRequest active = new ActiveRequest(request, UUID.randomUUID().toString(), System.currentTimeMillis(), worldTime);
         // Track the sound
         synchronized (tracker) {
             tracker.addSound(active);
         }
+
+        logger.info("Submitting SoundSystem request to play " + request.toString());
+        soundSystem.rawDataStream(
+                FORMAT_OUT,
+                false,
+                active.sourcename,
+                request.pos.getX(),
+                request.pos.getY(),
+                request.pos.getZ(),
+                SoundSystemConfig.ATTENUATION_LINEAR,
+                64.0f
+        );
+
+        // Fill the buffers and play
+        player.fetchAndPlayAsync(active);
     }
 
     public void stopAudioAtPos(int dimen, BlockPos pos) {
@@ -218,7 +224,7 @@ public class PositionedAudioPlayer implements ITickable {
         }
 
         private void feedBytes(byte[] buffer) {
-            soundSystem.feedRawAudioData(sourcename, buffer);
+            soundSystem.feedRawAudioData(sourcename, stereoToMono(buffer));
         }
 
         public void notifyFailed() {
@@ -232,9 +238,26 @@ public class PositionedAudioPlayer implements ITickable {
      * from the milliseconds to skip.
      */
     private static int millisToBytes(long totalOffsetMillis) {
-        int frameSize = MC_AUDIO_FORMAT.getFrameSize();
-        float totalOffsetBytes = (totalOffsetMillis * MC_AUDIO_FORMAT.getFrameRate() / 1000) * frameSize;
+        int frameSize = FORMAT_IN.getFrameSize();
+        float totalOffsetBytes = (totalOffsetMillis * FORMAT_IN.getFrameRate() / 1000) * frameSize;
         // Offset must be multiple of a frame!
         return (int) totalOffsetBytes / frameSize * frameSize;
+    }
+
+    /**
+     * Averages two samples and combines them into one.
+     */
+    private static byte[] stereoToMono(byte[] buffer) {
+        byte[] mono = new byte[buffer.length / 2];
+        for (int i = 0; i < buffer.length / 4; i++) {
+            short sampleOne = (short) (((buffer[i * 4 + 1] & 0xFF) << 8) | (buffer[i * 4] & 0xFF));
+            short sampleTwo = (short) (((buffer[i * 4 + 3] & 0xFF) << 8) | (buffer[i * 4 + 2] & 0xFF));
+
+            int sampleMono = (sampleOne + sampleTwo) / 2;
+
+            mono[i * 2] = (byte) sampleMono;
+            mono[i * 2 + 1] = (byte) (sampleMono >> 8);
+        }
+        return mono;
     }
 }
