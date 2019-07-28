@@ -225,6 +225,7 @@ public class PositionedAudioPlayer implements ITickable {
 
         private void feedBytes(byte[] buffer) {
             soundSystem.feedRawAudioData(sourcename, stereoToMono(buffer));
+            soundSystem.CommandQueue(null);
         }
 
         public void notifyFailed() {
