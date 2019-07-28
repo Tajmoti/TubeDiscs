@@ -69,7 +69,7 @@ public class TubeDisc extends ItemRecord {
 
         if (url == null) {
             if (worldIn.isRemote) {
-                logger.info("Disc URL is null, opening GUI");
+                logger.debug("Disc URL is null, opening GUI");
                 openUrlGUI(worldIn, player);
             }
             return EnumActionResult.FAIL;

@@ -54,7 +54,7 @@ public class PositionedAudioPlayer implements ITickable {
             tracker.addSound(active);
         }
 
-        logger.info("Submitting SoundSystem request to play " + request.toString());
+        logger.debug("Submitting SoundSystem request to play " + request.toString());
         soundSystem.rawDataStream(
                 FORMAT_OUT,
                 false,
@@ -79,9 +79,9 @@ public class PositionedAudioPlayer implements ITickable {
             activeRequest.isStopped = true;
             soundSystem.stop(activeRequest.sourcename);
             soundSystem.removeSource(activeRequest.sourcename);
-            logger.warn("{} {} stopped stopAudioAtPos()", dimen, pos.toString());
+            logger.debug("{} {} stopped stopAudioAtPos()", dimen, pos.toString());
         } else {
-            logger.warn("{} {} not found in stopAudioAtPos()", dimen, pos.toString());
+            logger.debug("{} {} not found in stopAudioAtPos()", dimen, pos.toString());
         }
     }
 
@@ -98,7 +98,7 @@ public class PositionedAudioPlayer implements ITickable {
                 tracker.removeSound(activeRequest);
             }
         } else {
-            logger.warn("{} {} {} not found in stopAudioAtPosIfValid()", dimen, pos.toString(), sourcename);
+            logger.debug("{} {} {} not found in stopAudioAtPosIfValid()", dimen, pos.toString(), sourcename);
         }
     }
 
@@ -108,7 +108,7 @@ public class PositionedAudioPlayer implements ITickable {
                 request.isStopped = true;
                 soundSystem.stop(request.sourcename);
                 soundSystem.removeSource(request.sourcename);
-                logger.info("{} removed in stopAllAudio()", request.sourcename);
+                logger.debug("{} removed in stopAllAudio()", request.sourcename);
             }
             tracker.removeAllSounds();
         }
@@ -133,7 +133,7 @@ public class PositionedAudioPlayer implements ITickable {
 
                 // If already over, remove it
                 if (r.duration != -1 && now > (r.timeStarted + r.duration)) {
-                    logger.info("{} is over, removing it", r.sourcename);
+                    logger.debug("{} is over, removing it", r.sourcename);
                     r.isStopped = true;
                     soundSystem.stop(r.sourcename);
                     soundSystem.removeSource(r.sourcename);

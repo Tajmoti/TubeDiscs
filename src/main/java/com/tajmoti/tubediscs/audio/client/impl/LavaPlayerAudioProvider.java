@@ -82,7 +82,7 @@ public class LavaPlayerAudioProvider implements IAudioProvider {
             }
             // Check if the sound should still be playing
             if (!request.trimAndFeedBytes(frame.getData())) {
-                logger.warn("Playing of {} canceled, breaking from feed loop", request);
+                logger.debug("Playing of {} canceled, breaking from feed loop", request);
                 break;
             }
         }
