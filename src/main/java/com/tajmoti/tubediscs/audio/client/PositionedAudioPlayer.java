@@ -76,9 +76,7 @@ public class PositionedAudioPlayer implements ITickable {
             activeRequest = tracker.removeSoundAtPos(dimen, pos);
         }
         if (activeRequest != null) {
-            activeRequest.isStopped = true;
-            soundSystem.stop(activeRequest.sourcename);
-            soundSystem.removeSource(activeRequest.sourcename);
+            activeRequest.stop();
             logger.debug("{} {} stopped stopAudioAtPos()", dimen, pos.toString());
         } else {
             logger.debug("{} {} not found in stopAudioAtPos()", dimen, pos.toString());
@@ -91,9 +89,7 @@ public class PositionedAudioPlayer implements ITickable {
             activeRequest = tracker.findExistingRequest(dimen, pos);
         }
         if (activeRequest != null && activeRequest.isMatchingRequest(dimen, pos) && activeRequest.sourcename.equals(sourcename)) {
-            activeRequest.isStopped = true;
-            soundSystem.stop(activeRequest.sourcename);
-            soundSystem.removeSource(sourcename);
+            activeRequest.stop();
             synchronized (tracker) {
                 tracker.removeSound(activeRequest);
             }
@@ -105,9 +101,7 @@ public class PositionedAudioPlayer implements ITickable {
     public void stopAllAudio() {
         synchronized (tracker) {
             for (ActiveRequest request : tracker.getAllSounds()) {
-                request.isStopped = true;
-                soundSystem.stop(request.sourcename);
-                soundSystem.removeSource(request.sourcename);
+                request.stop();
                 logger.debug("{} removed in stopAllAudio()", request.sourcename);
             }
             tracker.removeAllSounds();
@@ -134,9 +128,7 @@ public class PositionedAudioPlayer implements ITickable {
                 // If already over, remove it
                 if (r.duration != -1 && now > (r.timeStarted + r.duration)) {
                     logger.debug("{} is over, removing it", r.sourcename);
-                    r.isStopped = true;
-                    soundSystem.stop(r.sourcename);
-                    soundSystem.removeSource(r.sourcename);
+                    r.stop();
                     it.remove();
                 } else if (r.dimen == dimension) {
                     soundSystem.setVolume(r.sourcename, volume);
@@ -228,8 +220,15 @@ public class PositionedAudioPlayer implements ITickable {
         }
 
         public void notifyFailed() {
-            isStopped = true;
             stopAudioAtPosIfValid(dimen, pos, sourcename);
+        }
+
+        private void stop() {
+            if (!isStopped) {
+                isStopped = true;
+                soundSystem.stop(sourcename);
+                soundSystem.removeSource(sourcename);
+            }
         }
     }
 
