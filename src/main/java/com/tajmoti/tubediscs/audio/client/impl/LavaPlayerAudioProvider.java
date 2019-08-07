@@ -59,7 +59,7 @@ public class LavaPlayerAudioProvider implements IAudioProvider {
 
             @Override
             public void loadFailed(FriendlyException exception) {
-                logger.warn("loadFailed()");
+                logger.warn("loadFailed()", exception);
                 request.notifyFailed();
             }
         });
